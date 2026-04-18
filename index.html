@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>VFK — Learn</title>
+    <meta name="description" content="Distraction-free YouTube learning. Track your progress, build streaks, and study smarter.">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app-container">
+
+    <!-- ══ SPLASH ══ -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <div class="splash-logo-text">VFK</div>
+            <p class="splash-tagline">Learn without distractions</p>
+            <div class="splash-loader"><div></div><div></div><div></div></div>
+        </div>
+    </div>
+
+    <!-- ══ ONBOARDING ══ -->
+    <div id="onboarding-overlay" class="hidden">
+        <div class="onboarding-slides">
+            <div class="onboarding-slide active" data-slide="0">
+                <div class="ob-icon"><i class='bx bxs-book-heart'></i></div>
+                <h2>Welcome to VFK</h2>
+                <p>Your distraction-free YouTube learning companion. No ads. No recommendations. Just focus.</p>
+            </div>
+            <div class="onboarding-slide" data-slide="1">
+                <div class="ob-icon"><i class='bx bx-plus-circle'></i></div>
+                <h2>Add Any Playlist</h2>
+                <p>Tap the <strong>+</strong> button to import any YouTube playlist. Your progress is saved automatically.</p>
+            </div>
+            <div class="onboarding-slide" data-slide="2">
+                <div class="ob-icon"><i class='bx bx-trending-up'></i></div>
+                <h2>Track Your Progress</h2>
+                <p>Build daily streaks 🔥, earn certificates 🏆, and monitor your weekly study hours in Stats.</p>
+            </div>
+        </div>
+        <div class="ob-dots">
+            <span class="ob-dot active" data-dot="0"></span>
+            <span class="ob-dot" data-dot="1"></span>
+            <span class="ob-dot" data-dot="2"></span>
+        </div>
+        <div class="ob-actions">
+            <button id="ob-skip" class="ob-skip-btn">Skip</button>
+            <button id="ob-next" class="btn-primary ob-next-btn"><span id="ob-next-label">Next</span> <i class='bx bx-right-arrow-alt'></i></button>
+        </div>
+    </div>
+
+    <!-- ══ PWA INSTALL BANNER ══ -->
+    <div id="pwa-banner" class="pwa-banner hidden">
+        <div class="pwa-info">
+            <div class="pwa-logo">VFK</div>
+            <div>
+                <div class="pwa-title">Install VFK App</div>
+                <div class="pwa-sub">Add to home screen for quick access</div>
+            </div>
+        </div>
+        <div class="pwa-btns">
+            <button id="pwa-dismiss" class="pwa-btn-dismiss">Later</button>
+            <button id="pwa-install" class="pwa-btn-install">Install</button>
+        </div>
+    </div>
+
+    <!-- ══ HEADER ══ -->
+    <header id="main-header">
+        <div class="header-left">
+            <div class="header-logo-text">VFK</div>
+        </div>
+        <div class="header-actions">
+            <div id="streak-badge" class="streak-badge hidden">
+                <span>🔥</span><span id="streak-count">0</span>
+            </div>
+            <span class="version-badge">v0.3</span>
+            <button id="theme-toggle" class="icon-btn" title="Toggle Theme"><i class='bx bx-moon'></i></button>
+        </div>
+    </header>
+
+    <!-- ══ MAIN CONTENT ══ -->
+    <main id="main-content">
+
+        <!-- ── COURSES VIEW ── -->
+        <section id="view-my-courses" class="view active">
+            <div class="view-header">
+                <div class="view-header-row">
+                    <div>
+                        <h2>My Courses</h2>
+                        <p class="subtitle">Your learning dashboard</p>
+                    </div>
+                    <button id="fab-add" class="fab-add-btn" title="Add Course">
+                        <i class='bx bx-plus'></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tag Filter Chips -->
+            <div id="tag-filters" class="tag-filters hidden">
+                <button class="tag-chip active" data-tag="all">All</button>
+            </div>
+
+            <!-- Resume Banner -->
+            <div id="resume-banner" class="resume-banner hidden">
+                <div class="resume-info">
+                    <i class='bx bx-play-circle'></i>
+                    <div>
+                        <span class="resume-label">Continue watching</span>
+                        <span id="resume-video-title" class="resume-title"></span>
+                    </div>
+                </div>
+                <button id="btn-resume" class="btn-resume">Resume</button>
+            </div>
+
+            <div id="courses-grid" class="courses-grid"></div>
+
+            <div id="empty-state" class="empty-state hidden">
+                <div class="empty-icon-wrap"><i class='bx bx-book-open'></i></div>
+                <h3>No Courses Yet</h3>
+                <p>Import a YouTube playlist to start your learning journey.</p>
+                <button id="btn-go-add" class="btn-primary btn-sm"><i class='bx bx-plus'></i> Add First Course</button>
+            </div>
+        </section>
+
+        <!-- ── SAVED / BOOKMARKS VIEW ── -->
+        <section id="view-saved" class="view hidden">
+            <div class="view-header">
+                <h2>Saved</h2>
+                <p class="subtitle">Your bookmarked lectures ⭐</p>
+            </div>
+            <div id="saved-list" class="lectures-list"></div>
+            <div id="saved-empty" class="empty-state hidden">
+                <div class="empty-icon-wrap"><i class='bx bx-star'></i></div>
+                <h3>No Bookmarks</h3>
+                <p>Star lectures with ⭐ to save them here.</p>
+            </div>
+        </section>
+
+        <!-- ── HISTORY VIEW ── -->
+        <section id="view-history" class="view hidden">
+            <div class="view-header">
+                <h2>History</h2>
+                <p class="subtitle">Recently watched lectures</p>
+            </div>
+            <div id="history-list" class="history-list"></div>
+            <div id="history-empty" class="empty-state hidden">
+                <div class="empty-icon-wrap"><i class='bx bx-history'></i></div>
+                <h3>No Watch History</h3>
+                <p>Videos you watch will appear here.</p>
+            </div>
+        </section>
+
+        <!-- ── STATS VIEW ── -->
+        <section id="view-stats" class="view hidden">
+            <div class="view-header">
+                <h2>Stats</h2>
+                <p class="subtitle">Your study analytics</p>
+            </div>
+
+            <!-- Streak Card -->
+            <div class="stats-card glass-panel">
+                <div class="stats-card-row">
+                    <div class="stats-card-item">
+                        <div class="stats-card-value" id="stat-streak">0</div>
+                        <div class="stats-card-label">🔥 Day Streak</div>
+                    </div>
+                    <div class="stats-card-item">
+                        <div class="stats-card-value" id="stat-total-watched">0</div>
+                        <div class="stats-card-label">📺 Videos Watched</div>
+                    </div>
+                    <div class="stats-card-item">
+                        <div class="stats-card-value" id="stat-courses">0</div>
+                        <div class="stats-card-label">📚 Courses</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Chart -->
+            <div class="glass-panel" style="margin-bottom:16px">
+                <h4 class="settings-section-title" style="margin-bottom:16px">📊 This Week (videos/day)</h4>
+                <div id="weekly-chart" class="weekly-chart"></div>
+                <div class="weekly-days" id="weekly-days"></div>
+            </div>
+
+            <!-- Course Progress -->
+            <div class="glass-panel">
+                <h4 class="settings-section-title" style="margin-bottom:16px">📈 Course Progress</h4>
+                <div id="stats-course-list" class="stats-course-list"></div>
+            </div>
+        </section>
+
+        <!-- ── SETTINGS VIEW ── -->
+        <section id="view-settings" class="view hidden">
+            <div class="view-header">
+                <h2>Settings</h2>
+                <p class="subtitle">App preferences</p>
+            </div>
+
+            <!-- Theme Accent -->
+            <div class="settings-group glass-panel">
+                <h4 class="settings-section-title">Accent Color</h4>
+                <div class="theme-swatches">
+                    <button class="swatch active" data-accent="red" title="Red" style="background:#E31B23"></button>
+                    <button class="swatch" data-accent="blue" title="Blue" style="background:#3b82f6"></button>
+                    <button class="swatch" data-accent="green" title="Green" style="background:#10b981"></button>
+                    <button class="swatch" data-accent="orange" title="Orange" style="background:#f97316"></button>
+                    <button class="swatch" data-accent="purple" title="Purple" style="background:#8b5cf6"></button>
+                </div>
+            </div>
+
+            <div class="settings-group glass-panel">
+                <div class="setting-item">
+                    <div class="setting-info"><i class='bx bx-moon'></i><span>Dark Mode</span></div>
+                    <label class="toggle-switch"><input type="checkbox" id="setting-dark-mode"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info"><i class='bx bx-play'></i><span>Autoplay Next</span></div>
+                    <label class="toggle-switch"><input type="checkbox" id="setting-autoplay" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info"><i class='bx bx-timer'></i><span>Pomodoro Timer</span></div>
+                    <label class="toggle-switch"><input type="checkbox" id="setting-pomodoro"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+
+            <div class="settings-group glass-panel">
+                <h4 class="settings-section-title">Data</h4>
+                <button id="btn-export" class="setting-item">
+                    <div class="setting-info"><i class='bx bx-download'></i><span>Export Data (JSON)</span></div>
+                    <i class='bx bx-chevron-right'></i>
+                </button>
+                <label class="setting-item" style="cursor:pointer">
+                    <div class="setting-info"><i class='bx bx-upload'></i><span>Import Data (JSON)</span></div>
+                    <input type="file" id="btn-import-file" accept=".json" style="display:none">
+                    <i class='bx bx-chevron-right'></i>
+                </label>
+                <button id="btn-clear-data" class="setting-item danger">
+                    <div class="setting-info"><i class='bx bx-trash'></i><span>Clear All Data</span></div>
+                    <i class='bx bx-chevron-right'></i>
+                </button>
+            </div>
+
+            <div class="settings-group glass-panel">
+                <h4 class="settings-section-title">Keyboard Shortcuts</h4>
+                <div class="shortcut-list">
+                    <div class="shortcut-row"><kbd>Space</kbd><span>Play / Pause</span></div>
+                    <div class="shortcut-row"><kbd>←</kbd><span>Previous Video</span></div>
+                    <div class="shortcut-row"><kbd>→</kbd><span>Next Video</span></div>
+                    <div class="shortcut-row"><kbd>F</kbd><span>Fullscreen</span></div>
+                    <div class="shortcut-row"><kbd>B</kbd><span>Bookmark Lecture</span></div>
+                </div>
+            </div>
+
+            <div class="app-info">
+                <div class="settings-logo">VFK</div>
+                <p>v0.3</p>
+                <p class="muted">Learn without distractions</p>
+            </div>
+        </section>
+
+        <!-- ── COURSE DETAIL VIEW ── -->
+        <section id="view-course-detail" class="view hidden">
+            <div class="detail-header glass-panel">
+                <button id="btn-back-courses" class="icon-btn"><i class='bx bx-arrow-back'></i></button>
+                <div class="detail-header-info">
+                    <h2 id="detail-course-title"></h2>
+                    <span id="detail-video-count" class="detail-meta"></span>
+                </div>
+                <button id="btn-share-course" class="icon-btn" title="Share Course"><i class='bx bx-share-alt'></i></button>
+                <button id="btn-delete-course" class="icon-btn" title="Delete Course" style="color:var(--danger)"><i class='bx bx-trash'></i></button>
+            </div>
+            <div class="search-bar">
+                <i class='bx bx-search'></i>
+                <input type="text" id="lecture-search" placeholder="Search lectures...">
+            </div>
+            <div id="lectures-list" class="lectures-list"></div>
+        </section>
+
+    </main>
+
+    <!-- ══ PLAYER OVERLAY ══ -->
+    <div id="player-overlay" class="overlay hidden">
+        <div class="player-header">
+            <button id="btn-close-player" class="icon-btn"><i class='bx bx-chevron-down'></i></button>
+            <div class="player-title-info">
+                <h3 id="player-video-title"></h3>
+                <p id="player-course-title"></p>
+            </div>
+            <button id="btn-bookmark-player" class="icon-btn" title="Bookmark"><i class='bx bx-star'></i></button>
+            <a id="btn-open-yt" class="icon-btn" target="_blank" title="Open on YouTube"><i class='bx bxl-youtube'></i></a>
+            <button id="btn-fullscreen" class="icon-btn" title="Fullscreen"><i class='bx bx-fullscreen'></i></button>
+        </div>
+        <div class="player-layout">
+            <div class="video-wrapper">
+                <div id="youtube-player-container">
+                    <div id="youtube-player"></div>
+                </div>
+                <div class="video-controls-bar">
+                    <div class="speed-control">
+                        <span class="control-label">Speed</span>
+                        <div class="speed-btns" id="speed-btns">
+                            <button data-speed="0.5">0.5x</button>
+                            <button data-speed="1" class="active">1x</button>
+                            <button data-speed="1.25">1.25x</button>
+                            <button data-speed="1.5">1.5x</button>
+                            <button data-speed="2">2x</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="player-bottom">
+                <div class="player-controls glass-panel">
+                    <button id="btn-prev-video" class="control-btn"><i class='bx bx-skip-previous'></i></button>
+                    <div class="progress-info"><span id="current-video-index">1 / 10</span></div>
+                    <button id="btn-next-video" class="control-btn"><i class='bx bx-skip-next'></i></button>
+                </div>
+                <div class="desc-section">
+                    <button id="btn-toggle-desc" class="desc-toggle">
+                        <i class='bx bx-info-circle'></i> Description
+                        <i class='bx bx-chevron-down desc-arrow'></i>
+                    </button>
+                    <div id="video-description" class="video-description hidden">
+                        <p id="desc-text">Loading...</p>
+                    </div>
+                </div>
+                <a id="btn-view-comments" class="comments-link glass-panel" target="_blank">
+                    <i class='bx bx-comment-detail'></i>
+                    <span>View Comments on YouTube</span>
+                    <i class='bx bx-link-external'></i>
+                </a>
+                <div class="player-playlist">
+                    <h4>Up Next</h4>
+                    <div id="player-playlist-items"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ ADD COURSE MODAL (Bottom Sheet) ══ -->
+    <div id="add-course-modal" class="bottom-sheet-overlay hidden">
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-handle"></div>
+            <div class="bottom-sheet-header">
+                <h3>Add Course</h3>
+                <button id="add-modal-close" class="icon-btn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="add-tabs">
+                <button class="add-tab active" data-add-type="playlist"><i class='bx bx-list-ul'></i> Playlist</button>
+                <button class="add-tab" data-add-type="channel"><i class='bx bxl-youtube'></i> Channel</button>
+            </div>
+            <div class="form-container">
+                <label for="playlist-url" id="add-label">Paste YouTube Playlist URL</label>
+                <div class="input-group">
+                    <i class='bx bxl-youtube input-icon'></i>
+                    <input type="text" id="playlist-url" placeholder="https://youtube.com/playlist?list=PLxxxxxx" autocomplete="off">
+                </div>
+                <p class="input-hint" id="add-hint">Paste a full playlist URL or just the playlist ID</p>
+                <!-- Tags input -->
+                <label for="course-tags-input" style="margin-top:4px">Tags (optional)</label>
+                <div class="input-group">
+                    <i class='bx bx-purchase-tag input-icon'></i>
+                    <input type="text" id="course-tags-input" placeholder="Python, DSA, Math (comma separated)" autocomplete="off">
+                </div>
+                <button id="btn-import" class="btn-primary"><i class='bx bx-import'></i> Import Course</button>
+                <div id="import-status" class="status-msg"></div>
+            </div>
+            <!-- Channel playlists area -->
+            <div id="channel-results"></div>
+        </div>
+    </div>
+
+    <!-- ══ DELETE CONFIRMATION MODAL ══ -->
+    <div id="delete-modal" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <h3>Remove Course?</h3>
+            <p id="delete-course-name"></p>
+            <div class="modal-actions">
+                <button id="btn-cancel-delete" class="btn-secondary">Cancel</button>
+                <button id="btn-confirm-delete" class="btn-danger">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ SHARE MODAL ══ -->
+    <div id="share-modal" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <h3><i class='bx bx-share-alt'></i> Share Course</h3>
+            <p style="font-size:13px;margin-bottom:12px;color:var(--text-secondary)">Share this link with friends — it pre-fills the Add Course form:</p>
+            <div class="share-url-box">
+                <input type="text" id="share-url-input" readonly>
+                <button id="btn-copy-share" class="btn-primary btn-sm"><i class='bx bx-copy'></i> Copy</button>
+            </div>
+            <button id="btn-close-share" class="btn-secondary" style="margin-top:12px;width:100%">Close</button>
+        </div>
+    </div>
+
+    <!-- ══ CERTIFICATE MODAL ══ -->
+    <div id="certificate-modal" class="modal hidden">
+        <div class="modal-content glass-panel certificate-modal">
+            <div class="cert-header">🏆 Course Complete!</div>
+            <div id="cert-svg-wrap"></div>
+            <div class="modal-actions" style="margin-top:16px">
+                <button id="btn-download-cert" class="btn-primary"><i class='bx bx-download'></i> Save</button>
+                <button id="btn-close-cert" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ POMODORO WIDGET ══ -->
+    <div id="pomodoro-widget" class="pomodoro-widget hidden">
+        <div class="pomo-header">
+            <i class='bx bx-timer'></i>
+            <span id="pomo-mode">Focus</span>
+            <button id="pomo-close" class="icon-btn" style="font-size:18px;padding:4px;margin-left:auto"><i class='bx bx-x'></i></button>
+        </div>
+        <div class="pomo-time" id="pomo-time">25:00</div>
+        <div class="pomo-progress"><div class="pomo-progress-bar" id="pomo-bar"></div></div>
+        <div class="pomo-actions">
+            <button id="pomo-start" class="pomo-btn"><i class='bx bx-play'></i></button>
+            <button id="pomo-reset" class="pomo-btn"><i class='bx bx-reset'></i></button>
+        </div>
+    </div>
+
+    <!-- ══ BOTTOM NAV ══ -->
+    <nav id="bottom-nav" class="glass-nav">
+        <button class="nav-item active" data-target="view-my-courses" id="nav-courses">
+            <i class='bx bxs-book-heart'></i><span>Courses</span>
+        </button>
+        <button class="nav-item" data-target="view-saved" id="nav-saved">
+            <i class='bx bx-bookmark'></i><span>Saved</span>
+        </button>
+        <button class="nav-item" data-target="view-history" id="nav-history">
+            <i class='bx bx-history'></i><span>History</span>
+        </button>
+        <button class="nav-item" data-target="view-stats" id="nav-stats">
+            <i class='bx bx-bar-chart-alt-2'></i><span>Stats</span>
+        </button>
+        <button class="nav-item" data-target="view-settings" id="nav-settings">
+            <i class='bx bx-cog'></i><span>Settings</span>
+        </button>
+    </nav>
+
+</div><!-- #app-container -->
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+    "name": "StudY",
+    "short_name": "StudY",
+    "description": "Distraction-free YouTube learning for students",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#8b5cf6",
+    "orientation": "portrait",
+    "icons": []
+}
