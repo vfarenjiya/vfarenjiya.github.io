@@ -1,7 +1,7 @@
 {
   "name": "GATE DA Syllabus Tracker",
-  "short_name": "SyllabusTracker",
-  "description": "Rigorous Syllabus Tracker with Deep Mathematical Modules.",
+  "short_name": "GATE DA",
+  "description": "SyllabusTracker",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#14161c",
