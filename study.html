@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Module</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="./css/global.css">
+    <link rel="stylesheet" href="./css/study.css">
+    
+    <!-- MathJax Configuration (Must load before MathJax library) -->
+    <script src="./js/math-config.js"></script>
+    
+    <!-- MathJax Library -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <nav>
+        <a href="index.html">← Back to Dashboard</a>
+    </nav>
+    
+    <main>
+        <!-- Placeholders that JavaScript will fill -->
+        <h1 id="module-title">Loading Title...</h1>
+        <p id="module-content">Loading content...</p>
+        
+        <h2>Practice Problems:</h2>
+        <ul id="problems-list">
+            <li>Loading problems...</li>
+        </ul>
+    </main>
+
+    <!-- Main Controller for the Study Page -->
+    <script type="module" src="./js/study-main.js"></script>
+</body>
+</html>
