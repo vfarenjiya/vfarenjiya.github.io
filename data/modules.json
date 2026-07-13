@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "title": "Quadratic Equations",
+    "content": "A quadratic equation is a second-order polynomial equation in a single variable $x$, with $a \\neq 0$. The general form is $ax^2 + bx + c = 0$.",
+    "problems": [
+      "The solutions to a quadratic equation are given by the formula:",
+      "$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$",
+      "Solve for $x$: $2x^2 - 8x + 6 = 0$"
+    ]
+  },
+  {
+    "id": 2,
+    "title": "Basic Trigonometry",
+    "content": "Trigonometry studies relationships between side lengths and angles of triangles.",
+    "problems": [
+      "State the Pythagorean theorem: $$a^2 + b^2 = c^2$$",
+      "Find the value of $\\sin(90^\\circ)$"
+    ]
+  }
+]
