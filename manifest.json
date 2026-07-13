@@ -1,0 +1,22 @@
+{
+  "name": "GATE DA Syllabus Tracker",
+  "short_name": "SyllabusTracker",
+  "description": "Rigorous Syllabus Tracker with Deep Mathematical Modules.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#14161c",
+  "theme_color": "#e8a23d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
