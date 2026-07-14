@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GATE DA</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">GATE · Data Science &amp; AI</div>
+    <h1>Advanced Boarding Pass</h1>
+    <p class="sub">Rigorous Syllabus Tracker with Deep Mathematical Modules & Hard Problems.</p>
+  </header>
+
+  <div class="console" id="console">
+    <div class="ring-wrap">
+      <div class="ring">
+        <svg width="64" height="64"><circle cx="32" cy="32" r="27" stroke="var(--surface-2)" stroke-width="6" fill="none"/><circle id="ringFill" cx="32" cy="32" r="27" stroke="url(#grad)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="169.6"/><defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e8a23d"/><stop offset="100%" stop-color="#35d07f"/></linearGradient></defs></svg>
+        <div class="ring-pct" id="ringPct">0%</div>
+      </div>
+      <div class="ring-label">Overall<br><b id="ringFrac">0 / 0</b></div>
+    </div>
+    <div class="stat"><div class="num"><span class="flame">🔥</span> <span id="streakNum">0</span></div><div class="lbl">Day streak</div></div>
+    <div class="exam-input"><label for="examDate">Exam day</label><input type="date" id="examDate"></div>
+    <button class="log-btn" id="logBtn">Log today's lecture</button>
+  </div>
+
+  <div class="switch-row">
+    <div class="switch" id="viewSwitch"><button data-view="subject" class="active">By Subject</button><button data-view="week">12-Week Plan</button></div>
+    <div class="plan-start" id="planStartRow" style="display:none;"><label for="planStart">Plan starts</label><input type="date" id="planStart"></div>
+  </div>
+
+  <div class="tools-row">
+    <input type="text" id="searchBox" placeholder="Search all topics…">
+    <div class="tools-btns">
+      <button id="themeToggleBtn">🌓 Theme</button>
+      <button id="fontMinusBtn">A-</button>
+      <button id="fontPlusBtn">A+</button>
+      <button id="expandAllBtn">Expand All</button>
+      <button id="collapseAllBtn">Collapse All</button>
+      <button id="studyRedirectBtn">StudY</button>
+    </div>
+  </div>
+  <div class="match-count" id="matchCount"></div>
+
+  <div id="ticketContainer"></div>
+
+  <div class="footer-row">
+    <span class="hint" id="daysLeftHint"></span>
+    <button class="reset-btn" id="resetBtn">Reset all progress</button>
+  </div>
+</div>
+
+<div class="pwa-banner hidden" id="pwaBanner">
+  <img src="icon.svg" alt="" class="pwa-banner-icon">
+  <div class="pwa-banner-text">
+    <strong>Install GATE DA</strong>
+    <span>Add it to your home screen for quick, full-screen access.</span>
+  </div>
+  <div class="pwa-banner-actions">
+    <button id="pwaDismiss" class="pwa-btn-ghost">Not now</button>
+    <button id="pwaInstall" class="pwa-btn-solid">Install</button>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
