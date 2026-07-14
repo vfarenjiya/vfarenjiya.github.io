@@ -445,7 +445,7 @@ document.getElementById('viewSwitch').addEventListener('click', (e)=>{
 });
 
 document.getElementById('studyRedirectBtn').addEventListener('click', () => {
-  window.location.href = 'https://vfarenjiya.github.io/study/'; 
+  window.location.href = 'study/index.html'; 
 });
 
 (()=>{
