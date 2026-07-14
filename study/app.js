@@ -1,12 +1,22 @@
-// App Controller for GATE DA Interactive Coaching
+// Inherit Theme from Main Tracker Application
+function syncTheme() {
+  try {
+    const mainTrackerState = localStorage.getItem('gate-da-stable-v1');
+    if (mainTrackerState) {
+      const parsed = JSON.parse(mainTrackerState);
+      document.body.classList.toggle('light-theme', !!parsed.isLight);
+      document.documentElement.style.setProperty('--font-scale', parsed.fontScale || 1);
+    }
+  } catch (e) {}
+}
 
 let state = {
   currentSubject: null,
   currentLessonIdx: 0,
   currentQuizIdx: 0,
-  mode: 'dashboard', // dashboard, lesson, quiz, success
-  progress: {}, // subject -> { lessonsCompleted, quizzesCompleted }
-  answers: {} // quiz answers
+  mode: 'dashboard', 
+  progress: {}, 
+  answers: {} 
 };
 
 function initProgress() {
@@ -36,22 +46,18 @@ function saveState() {
 
 function renderSidebar() {
   const sidebar = document.getElementById('sidebar');
-  sidebar.innerHTML = '';
-
-  const h3 = document.createElement('h3');
-  h3.textContent = 'Subjects';
-  sidebar.appendChild(h3);
+  sidebar.innerHTML = '<h3>Modules</h3>';
 
   SUBJECTS_ORDER.forEach(code => {
     const subject = CURRICULUM[code];
     const item = document.createElement('div');
-    item.className = 'sidebar-item' + (state.currentSubject === code ? ' active' : '');
+    item.className = 'hub-sidebar-item' + (state.currentSubject === code ? ' active' : '');
     
     const prog = state.progress[code];
-    const total = subject.lessons.length + 1; // lessons + quiz
-    const done = prog.lessonsCompleted + (prog.quizzesCompleted > 0 ? 1 : 0);
+    const total = subject.lessons.length + subject.quiz.length; 
+    const done = prog.lessonsCompleted + prog.quizzesCompleted;
     
-    item.textContent = `${code} (${done}/${total})`;
+    item.innerHTML = `<span>${code}</span> <span class="prog">${done}/${total}</span>`;
     item.onclick = () => selectSubject(code);
     sidebar.appendChild(item);
   });
@@ -75,12 +81,11 @@ function showDashboard() {
 function render() {
   renderSidebar();
 
-  const dash = document.getElementById('dashboard');
+  const dash = document.getElementById('dashboardPanel');
   const lessonPanel = document.getElementById('lessonPanel');
   const quizPanel = document.getElementById('quizPanel');
   const successPanel = document.getElementById('successPanel');
 
-  // Hide all
   [dash, lessonPanel, quizPanel, successPanel].forEach(p => p.classList.add('hidden'));
 
   if (state.mode === 'dashboard') {
@@ -105,7 +110,7 @@ function renderDashboard() {
   SUBJECTS_ORDER.forEach(code => {
     const subject = CURRICULUM[code];
     totalLessons += subject.lessons.length;
-    totalQuizzes += 1; // one quiz per subject
+    totalQuizzes += subject.quiz.length; 
     const prog = state.progress[code];
     done += prog.lessonsCompleted + prog.quizzesCompleted;
   });
@@ -114,22 +119,9 @@ function renderDashboard() {
   const pct = totalAll > 0 ? Math.round((done / totalAll) * 100) : 0;
 
   statsDiv.innerHTML = `
-    <div class="stat-card">
-      <div class="num">${pct}%</div>
-      <div class="label">Overall</div>
-    </div>
-    <div class="stat-card">
-      <div class="num">${done}</div>
-      <div class="label">Completed</div>
-    </div>
-    <div class="stat-card">
-      <div class="num">${totalLessons}</div>
-      <div class="label">Lessons</div>
-    </div>
-    <div class="stat-card">
-      <div class="num">${SUBJECTS_ORDER.length}</div>
-      <div class="label">Subjects</div>
-    </div>
+    <div class="stat-box"><div class="num">${pct}%</div><div class="lbl">Mastery</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--amber)">${done}</div><div class="lbl">Completed</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--blue)">${SUBJECTS_ORDER.length}</div><div class="lbl">Subjects</div></div>
   `;
 
   const grid = document.getElementById('subjectGrid');
@@ -144,11 +136,11 @@ function renderDashboard() {
     
     card.innerHTML = `
       <div class="code">${code}</div>
-      <h3>${subject.name}</h3>
-      <div class="topics">
-        <strong>${subject.lessons.length}</strong> lessons<br>
-        <strong>1</strong> quiz<br>
-        <strong>${prog.lessonsCompleted}</strong> done
+      <h4>${subject.name}</h4>
+      <div class="meta">
+        <strong>${subject.lessons.length}</strong> modules<br>
+        <strong>${subject.quiz.length}</strong> assessments<br>
+        <strong>${prog.lessonsCompleted + prog.quizzesCompleted}</strong> finished
       </div>
     `;
     card.onclick = () => selectSubject(code);
@@ -161,7 +153,6 @@ function renderLesson() {
   const lessons = subject.lessons;
 
   if (state.currentLessonIdx >= lessons.length) {
-    // Move to quiz
     state.mode = 'quiz';
     state.currentQuizIdx = 0;
     render();
@@ -170,18 +161,20 @@ function renderLesson() {
 
   const lesson = lessons[state.currentLessonIdx];
   document.getElementById('lessonTitle').textContent = lesson.title;
-  document.getElementById('lessonSubtitle').textContent = `Lesson ${state.currentLessonIdx + 1} of ${lessons.length}`;
+  document.getElementById('lessonTag').textContent = subject.name;
+  document.getElementById('lessonTag').style.color = subject.color;
+  document.getElementById('lessonTag').style.background = subject.color + '22'; 
+  document.getElementById('lessonSubtitle').textContent = `Module ${state.currentLessonIdx + 1} of ${lessons.length}`;
 
   const pct = ((state.currentLessonIdx + 1) / lessons.length) * 100;
   document.getElementById('lessonProgress').style.width = pct + '%';
 
-  // Render content with KaTeX
   const content = document.getElementById('lessonContent');
   content.innerHTML = lesson.content;
   renderMath();
 
   document.getElementById('prevBtn').disabled = state.currentLessonIdx === 0;
-  document.getElementById('nextBtn').textContent = state.currentLessonIdx === lessons.length - 1 ? 'Next: Quiz →' : 'Next Lesson →';
+  document.getElementById('nextBtn').textContent = state.currentLessonIdx === lessons.length - 1 ? 'Start Assessment →' : 'Next Module →';
 }
 
 function previousLesson() {
@@ -197,7 +190,6 @@ function nextLesson() {
     state.currentLessonIdx++;
     render();
   } else {
-    // Mark lessons as done, move to quiz
     state.progress[state.currentSubject].lessonsCompleted = subject.lessons.length;
     state.mode = 'quiz';
     state.currentQuizIdx = 0;
@@ -211,8 +203,6 @@ function renderQuiz() {
   const quiz = subject.quiz;
 
   if (state.currentQuizIdx >= quiz.length) {
-    // Quiz complete
-    state.progress[state.currentSubject].quizzesCompleted = 1;
     state.mode = 'success';
     saveState();
     render();
@@ -220,23 +210,19 @@ function renderQuiz() {
   }
 
   const q = quiz[state.currentQuizIdx];
-  document.getElementById('quizTitle').textContent = `${subject.name} Quiz`;
+  document.getElementById('quizSubtitle').textContent = `Question ${state.currentQuizIdx + 1} of ${quiz.length}`;
   
-  const pct = ((state.currentQuizIdx + 1) / quiz.length) * 100;
+  const pct = ((state.currentQuizIdx) / quiz.length) * 100;
   document.getElementById('quizProgress').style.width = pct + '%';
 
-  const container = document.getElementById('quizContainer');
-  container.innerHTML = `
-    <div class="quiz-q">
-      <div class="q-text">${q.q}</div>
-      <div class="quiz-opts" id="quizOpts"></div>
-    </div>
-  `;
+  document.getElementById('qText').textContent = q.q;
 
   const optsDiv = document.getElementById('quizOpts');
+  optsDiv.innerHTML = '';
   q.opts.forEach((opt, i) => {
     const label = document.createElement('label');
-    label.className = 'quiz-opt';
+    label.className = 'quiz-option';
+    label.id = `opt-${i}`;
     label.innerHTML = `
       <input type="radio" name="answer" value="${i}">
       <span>${opt}</span>
@@ -244,12 +230,21 @@ function renderQuiz() {
     optsDiv.appendChild(label);
   });
 
+  const feedbackBox = document.getElementById('quizFeedback');
+  feedbackBox.className = 'quiz-feedback';
+  feedbackBox.innerHTML = '';
+
   document.getElementById('submitBtn').disabled = false;
   document.getElementById('submitBtn').textContent = 'Submit Answer';
+  document.getElementById('submitBtn').style.display = 'block';
+  document.getElementById('skipBtn').textContent = 'Skip';
+  
+  renderMath();
 }
 
 function submitQuiz() {
-  const quiz = CURRICULUM[state.currentSubject].quiz;
+  const subject = CURRICULUM[state.currentSubject];
+  const quiz = subject.quiz;
   const q = quiz[state.currentQuizIdx];
 
   const selected = document.querySelector('input[name="answer"]:checked');
@@ -261,19 +256,28 @@ function submitQuiz() {
   const ansIdx = parseInt(selected.value);
   const isCorrect = ansIdx === q.ans;
 
-  // Show feedback
-  const feedback = document.createElement('div');
-  feedback.className = 'quiz-feedback ' + (isCorrect ? 'correct' : 'wrong');
+  document.getElementById(`opt-${ansIdx}`).classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) {
+    document.getElementById(`opt-${q.ans}`).classList.add('correct');
+  }
+
+  const feedback = document.getElementById('quizFeedback');
+  feedback.className = 'quiz-feedback show ' + (isCorrect ? 'correct' : 'wrong');
   feedback.innerHTML = `
-    <strong>${isCorrect ? '✓ Correct!' : '✗ Incorrect'}</strong><br>
+    <strong style="color: ${isCorrect ? 'var(--green)' : 'var(--flame)'}">${isCorrect ? '✓ Correct!' : '✗ Incorrect'}</strong><br><br>
     ${q.exp}
   `;
-  document.getElementById('quizContainer').appendChild(feedback);
 
-  // Disable submit, enable skip
-  document.getElementById('submitBtn').disabled = true;
-  document.getElementById('skipBtn').textContent = state.currentQuizIdx === quiz.length - 1 ? 'Finish →' : 'Next Question →';
+  if (isCorrect && state.progress[state.currentSubject].quizzesCompleted < quiz.length) {
+    state.progress[state.currentSubject].quizzesCompleted++;
+    saveState();
+  }
+
+  document.getElementById('submitBtn').style.display = 'none';
+  document.getElementById('skipBtn').textContent = state.currentQuizIdx === quiz.length - 1 ? 'Finish Assessment →' : 'Next Question →';
   document.getElementById('skipBtn').onclick = () => nextQuestion();
+  
+  renderMath();
 }
 
 function skipQuestion() {
@@ -288,11 +292,10 @@ function nextQuestion() {
 function renderSuccess() {
   const subject = CURRICULUM[state.currentSubject];
   document.getElementById('successTitle').textContent = `${subject.name} Complete!`;
-  document.getElementById('successText').textContent = `You've learned all the key concepts and completed the quiz. Great job! Pick another subject or review.`;
 }
 
 function renderMath() {
-  document.querySelectorAll('.katex-display, .lesson-text, .quiz-container').forEach(el => {
+  document.querySelectorAll('.katex-display, .hub-panel').forEach(el => {
     try {
       el.querySelectorAll('script[type="math/tex"]').forEach(script => {
         const math = script.textContent;
@@ -303,9 +306,8 @@ function renderMath() {
     } catch (e) {}
   });
 
-  // Handle inline $..$ and display $$..$$
   try {
-    const elements = document.querySelectorAll('.lesson-text, .example-box, .theorem-box, .quiz-container');
+    const elements = document.querySelectorAll('#lessonContent, .example-box, .theorem-box, .def-box, .quiz-feedback, #qText, .quiz-option');
     elements.forEach(el => {
       let html = el.innerHTML;
       html = html.replace(/\$\$(.*?)\$\$/gs, (m, math) => {
@@ -330,6 +332,6 @@ function renderMath() {
   } catch (e) {}
 }
 
-// Initialize
+syncTheme();
 loadState();
 render();
