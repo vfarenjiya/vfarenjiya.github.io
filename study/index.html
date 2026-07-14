@@ -3,153 +3,152 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GATE DA Interactive Coaching</title>
+<title>GATE DA - Coaching Hub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<!-- Inherit exact styling and CSS variables from the parent tracker -->
+<link rel="stylesheet" href="../styles.css">
 <style>
-:root {
-  --bg: #14161c; --surface: #1c1f29; --surface-2: #232733;
-  --line: #333949; --line-dotted: #454c5f;
-  --text: #f1f2f6; --muted: #8a8fa0;
-  --amber: #e8a23d; --green: #35d07f; --flame: #ff6b46; --blue: #5aa9e6; --purple: #c792ea;
-  --radius: 14px;
-}
-* { box-sizing: border-box; }
-::-webkit-scrollbar { width: 0px; }
-* { -ms-overflow-style: none; scrollbar-width: none; }
-html, body { margin: 0; padding: 0; }
-body {
-  background: radial-gradient(1200px 500px at 15% -10%, rgba(232,162,61,0.08), transparent 60%),
-              radial-gradient(900px 500px at 100% 10%, rgba(53,208,127,0.05), transparent 55%), var(--bg);
-  color: var(--text); font-family: 'Inter', sans-serif;
-  min-height: 100vh; padding: 20px 18px;
-  font-size: 14px;
-}
-.wrap { max-width: 1200px; margin: 0 auto; }
+  /* Layout specific to the coaching hub, extending the base tracker theme */
+  .hub-grid { display: grid; grid-template-columns: 260px 1fr; gap: 24px; margin-top: 24px; }
+  @media (max-width: 800px) { .hub-grid { grid-template-columns: 1fr; } }
+  
+  .hub-sidebar { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; }
+  .hub-sidebar h3 { font-family: 'Space Grotesk', sans-serif; font-size: calc(14px * var(--font-scale)); color: var(--muted); margin: 0 0 16px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .hub-sidebar-item { padding: 10px 14px; margin-bottom: 6px; border-radius: 8px; cursor: pointer; font-size: calc(13px * var(--font-scale)); font-weight: 500; transition: all 0.2s; border-left: 3px solid transparent; color: var(--text); display: flex; justify-content: space-between; }
+  .hub-sidebar-item:hover { background: var(--surface-2); }
+  .hub-sidebar-item.active { background: rgba(232,162,61,0.1); border-left-color: var(--amber); color: var(--amber); }
+  .hub-sidebar-item .prog { font-family: 'JetBrains Mono', monospace; font-size: 0.9em; opacity: 0.7; }
+  
+  .hub-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px; min-height: 500px; }
+  .hub-panel.hidden { display: none; }
+  
+  .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .stat-box { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 20px; text-align: center; }
+  .stat-box .num { font-family: 'JetBrains Mono', monospace; font-size: calc(28px * var(--font-scale)); font-weight: 700; color: var(--amber); }
+  .stat-box .lbl { font-size: calc(11.5px * var(--font-scale)); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; }
 
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-.topbar .logo { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.topbar .badge { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--amber); border: 1px dashed var(--line-dotted); padding: 6px 10px; border-radius: 8px; }
+  .subject-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .subject-card { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; border-left: 4px solid var(--line); }
+  .subject-card:hover { border-color: var(--amber); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .subject-card .code { font-family: 'JetBrains Mono', monospace; font-size: calc(11px * var(--font-scale)); color: var(--muted); margin-bottom: 8px; }
+  .subject-card h4 { font-family: 'Space Grotesk', sans-serif; font-size: calc(16px * var(--font-scale)); margin: 0 0 12px; }
+  .subject-card .meta { font-size: calc(12px * var(--font-scale)); color: var(--muted); line-height: 1.6; }
 
-.main { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
-@media (max-width: 900px) { .main { grid-template-columns: 1fr; } .sidebar { max-height: 400px; } }
+  .nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; border-top: 1px solid var(--line); padding-top: 24px; gap: 12px; flex-wrap: wrap;}
+  
+  /* Buttons aligned with tracker log-btn */
+  .btn-primary { background: var(--amber); color: #fff; border: none; border-radius: 10px; padding: 12px 24px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: calc(14px * var(--font-scale)); cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(232,162,61,0.25); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 12px 24px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: calc(14px * var(--font-scale)); cursor: pointer; transition: all 0.2s; }
+  .btn-secondary:hover { border-color: var(--line-dotted); }
+  
+  .back-to-app { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: calc(13px * var(--font-scale)); font-weight: 500; margin-bottom: 24px; transition: color 0.2s; }
+  .back-to-app:hover { color: var(--amber); }
 
-.sidebar { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; overflow-y: auto; max-height: calc(100vh - 150px); position: sticky; top: 20px; }
-.sidebar h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 12px; }
-.sidebar-item { padding: 8px 10px; margin-bottom: 6px; border-radius: 8px; cursor: pointer; font-size: 13px; border-left: 3px solid transparent; transition: all .2s; }
-.sidebar-item:hover { background: var(--surface-2); }
-.sidebar-item.active { background: rgba(232,162,61,0.1); border-left-color: var(--amber); font-weight: 500; }
-
-.content { display: flex; flex-direction: column; gap: 16px; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
-.panel.hidden { display: none; }
-.panel h2 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; margin: 0 0 6px; }
-.panel .subtitle { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
-
-.lesson-text { line-height: 1.7; color: var(--text); }
-.lesson-text p { margin: 0 0 14px; }
-.theorem-box { background: rgba(199,146,234,0.08); border-left: 4px solid var(--purple); padding: 16px; border-radius: 8px; margin: 16px 0; }
-.theorem-box h4 { margin: 0 0 8px; color: var(--purple); }
-.example-box { background: rgba(53,208,127,0.06); border-left: 4px solid var(--green); padding: 16px; border-radius: 8px; margin: 16px 0; }
-.example-box h4 { margin: 0 0 8px; color: var(--green); }
-.katex-display { margin: 12px 0; padding: 12px; background: var(--surface-2); border-radius: 6px; }
-
-.progress-bar { height: 4px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin: 16px 0; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, var(--amber), var(--green)); }
-
-.quiz-q { margin-bottom: 22px; }
-.quiz-q .q-text { font-weight: 600; margin-bottom: 10px; }
-.quiz-opts { display: flex; flex-direction: column; gap: 6px; }
-.quiz-opt { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; transition: all .2s; }
-.quiz-opt:hover { background: var(--surface-2); }
-.quiz-opt.correct { border-color: var(--green); background: rgba(53,208,127,0.1); }
-.quiz-opt.wrong { border-color: var(--flame); background: rgba(255,107,70,0.1); }
-.quiz-feedback { margin-top: 12px; padding: 12px; border-radius: 8px; font-size: 13px; }
-.quiz-feedback.correct { background: rgba(53,208,127,0.1); color: var(--green); }
-.quiz-feedback.wrong { background: rgba(255,107,70,0.1); color: var(--flame); }
-
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-.stat-card { background: var(--surface-2); border-radius: 10px; padding: 12px; text-align: center; }
-.stat-card .num { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: var(--amber); }
-.stat-card .label { font-size: 11px; color: var(--muted); margin-top: 4px; }
-
-.subject-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-@media (max-width: 640px) { .subject-grid { grid-template-columns: 1fr; } }
-.subject-card { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; cursor: pointer; transition: all .2s; }
-.subject-card:hover { border-color: var(--amber); }
-.subject-card .code { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--amber); margin-bottom: 6px; }
-.subject-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 15px; margin: 0 0 8px; }
-.subject-card .topics { font-size: 12px; color: var(--muted); line-height: 1.5; }
-
-.btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-.btn { background: var(--amber); color: #000; border: none; border-radius: 10px; padding: 11px 16px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all .2s; }
-.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(232,162,61,0.25); }
-.btn.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.back-btn { background: transparent; border: 1px solid var(--line); color: var(--text); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; margin-bottom: 16px; }
-.back-btn:hover { border-color: var(--amber); }
-
-.success-screen { text-align: center; padding: 40px 20px; }
-.success-screen .emoji { font-size: 60px; margin-bottom: 16px; }
+  .quiz-option { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; background: var(--surface-2); font-size: calc(14px * var(--font-scale)); }
+  .quiz-option:hover { border-color: var(--amber); }
+  .quiz-option input { margin: 0; transform: scale(1.2); accent-color: var(--amber); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(53,208,127,0.08); }
+  .quiz-option.wrong { border-color: var(--flame); background: rgba(239,68,68,0.08); }
+  
+  .quiz-feedback { margin-top: 24px; padding: 20px; border-radius: 10px; border: 1px solid var(--line); font-size: calc(14px * var(--font-scale)); line-height: 1.6; display: none; }
+  .quiz-feedback.show { display: block; animation: slideDown 0.3s ease; }
+  .quiz-feedback.correct { border-color: var(--green); background: rgba(53,208,127,0.05); color: var(--text); }
+  .quiz-feedback.wrong { border-color: var(--flame); background: rgba(239,68,68,0.05); color: var(--text); }
+  
+  .progress-container { width: 100%; height: 6px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin: 16px 0 32px; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--amber), var(--green)); transition: width 0.4s ease; width: 0%; }
+  
+  .hub-panel h2 { font-family: 'Space Grotesk', sans-serif; font-size: calc(24px * var(--font-scale)); margin: 0 0 8px; color: var(--text); }
+  .hub-panel .sub { font-size: calc(14px * var(--font-scale)); color: var(--muted); margin: 0 0 24px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar">
-    <div class="logo">📚 GATE DA Coaching</div>
-    <div style="flex: 1;"></div>
-    <div class="badge">Learn Free • No ads • Offline</div>
-  </div>
+  <a href="../index.html" class="back-to-app">← Back to Main Tracker</a>
+  
+  <header>
+    <div class="eyebrow">GATE · Data Science &amp; AI</div>
+    <h1>Interactive Coaching</h1>
+    <p class="sub">Rigorous theoretical modules &amp; interactive assessments aligned with your tracker.</p>
+  </header>
 
-  <div class="main">
-    <div class="sidebar" id="sidebar"></div>
+  <div class="hub-grid">
+    <div class="hub-sidebar" id="sidebar">
+      <!-- Sidebar injected via JS -->
+    </div>
 
-    <div class="content">
-      <!-- Dashboard -->
-      <div class="panel" id="dashboard">
-        <h2>Start learning GATE DA</h2>
-        <p class="subtitle">Interactive lessons, quizzes & explanations. Free coaching at your pace.</p>
-        <div class="stats" id="stats"></div>
-        <div class="subject-grid" id="subjectGrid"></div>
-      </div>
-
-      <!-- Lesson -->
-      <div class="panel hidden" id="lessonPanel">
-        <button class="back-btn" onclick="showDashboard()">← Back</button>
-        <h2 id="lessonTitle"></h2>
-        <p class="subtitle" id="lessonSubtitle"></p>
-        <div class="progress-bar"><div class="progress-fill" id="lessonProgress"></div></div>
-        <div id="lessonContent" class="lesson-text"></div>
-        <div class="btn-row">
-          <button class="btn secondary" id="prevBtn" onclick="previousLesson()" disabled>← Previous</button>
-          <button class="btn" id="nextBtn" onclick="nextLesson()">Next →</button>
+    <div class="hub-content">
+      <!-- Dashboard Panel -->
+      <div class="hub-panel" id="dashboardPanel">
+        <h2>Your Learning Dashboard</h2>
+        <p class="sub">Select a subject to begin deep-dive study modules and quizzes.</p>
+        
+        <div class="dashboard-stats" id="stats">
+          <!-- Stats injected via JS -->
+        </div>
+        
+        <div class="subject-cards" id="subjectGrid">
+          <!-- Subjects injected via JS -->
         </div>
       </div>
 
-      <!-- Quiz -->
-      <div class="panel hidden" id="quizPanel">
-        <button class="back-btn" onclick="showDashboard()">← Back</button>
-        <h2 id="quizTitle"></h2>
-        <div class="progress-bar"><div class="progress-fill" id="quizProgress"></div></div>
-        <div id="quizContainer"></div>
-        <div class="btn-row">
-          <button class="btn" id="submitBtn" onclick="submitQuiz()">Submit</button>
-          <button class="btn secondary" id="skipBtn" onclick="skipQuestion()">Skip</button>
+      <!-- Lesson Panel -->
+      <div class="hub-panel hidden" id="lessonPanel">
+        <div class="module-header" style="margin-bottom: 12px; border:none; padding:0;">
+          <h2 id="lessonTitle">Lesson Title</h2>
+          <div class="module-tag" id="lessonTag">Subject</div>
+        </div>
+        <div class="sub" id="lessonSubtitle">Lesson 1 of X</div>
+        <div class="progress-container"><div class="progress-bar-fill" id="lessonProgress"></div></div>
+        
+        <div id="lessonContent" style="font-size: calc(14px * var(--font-scale)); line-height: 1.7;">
+           <!-- Uses parent's theorem-box, def-box, example-box styles automatically -->
+        </div>
+        
+        <div class="nav-row">
+          <button class="btn-secondary" id="prevBtn" onclick="previousLesson()">← Previous</button>
+          <button class="btn-primary" id="nextBtn" onclick="nextLesson()">Next Module →</button>
         </div>
       </div>
 
-      <!-- Success -->
-      <div class="panel hidden" id="successPanel">
-        <div class="success-screen">
-          <div class="emoji">🎉</div>
-          <h2 id="successTitle"></h2>
-          <p id="successText"></p>
-          <button class="btn" onclick="showDashboard()">Continue</button>
+      <!-- Quiz Panel -->
+      <div class="hub-panel hidden" id="quizPanel">
+        <div class="module-header" style="margin-bottom: 12px; border:none; padding:0;">
+          <h2 id="quizTitle">Knowledge Check</h2>
+          <div class="module-tag">Quiz</div>
         </div>
+        <div class="sub" id="quizSubtitle">Question 1 of X</div>
+        <div class="progress-container"><div class="progress-bar-fill" id="quizProgress"></div></div>
+        
+        <div class="example-box" style="margin-bottom: 24px;">
+          <strong style="font-size: 1.1em; display:block; margin-bottom:12px; color: var(--text);" id="qText">Question goes here?</strong>
+        </div>
+        
+        <div id="quizOpts">
+          <!-- Options injected via JS -->
+        </div>
+        
+        <div id="quizFeedback" class="quiz-feedback">
+           <!-- Feedback injected via JS -->
+        </div>
+        
+        <div class="nav-row">
+          <button class="btn-primary" id="submitBtn" onclick="submitQuiz()">Submit Answer</button>
+          <button class="btn-secondary" id="skipBtn" onclick="skipQuestion()">Skip</button>
+        </div>
+      </div>
+
+      <!-- Success Panel -->
+      <div class="hub-panel hidden" id="successPanel" style="text-align: center; padding-top: 64px;">
+        <div style="font-size: 64px; margin-bottom: 24px;">🎉</div>
+        <h2 id="successTitle" style="margin-bottom: 8px;">Module Complete!</h2>
+        <p class="sub">You have successfully mastered the concepts in this section.</p>
+        <button class="btn-primary" onclick="showDashboard()" style="margin-top: 24px;">Return to Dashboard</button>
       </div>
     </div>
   </div>
