@@ -1,0 +1,15 @@
+{
+  "name": "GATE DA Advanced Boarding Pass",
+  "short_name": "GATE DA",
+  "description": "Rigorous GATE DA syllabus tracker with deep mathematical modules and hard problems.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14161c",
+  "theme_color": "#14161c",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
