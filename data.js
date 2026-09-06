@@ -1,3 +1,10 @@
+/* ============================================================
+   GATE DA — DATA FILE (FIXED)
+   Fixes: corrupted titles, broken LaTeX, single-backslash
+   escaping, trailing-space DB keys, broken HTML tags,
+   corrupted subject keys (' co' / 'co ').
+   ============================================================ */
+
 const SUBJECT_META = {
   ps:   { name:'Probability & Statistics', color:'#e8a23d' },
   la:   { name:'Linear Algebra', color:'#5aa9e6' },
@@ -6,13 +13,12 @@ const SUBJECT_META = {
   dbms: { name:'Database Management & Warehousing', color:'#ff8a5c' },
   ml:   { name:'Machine Learning', color:'#ff6b46' },
   ai:   { name:'Artificial Intelligence', color:'#f6c445' },
-  rev:  { name:'Full Revision & Mock Tests', color:'#8a8fa0' }
+  rev:  { name:'Full Revision & Mock Tests', color:'#8a8fa0' },
 };
 const SUBJECT_ORDER = ['ps','la','co','pdsa','dbms','ml','ai','rev'];
-const ARENA_SUBJECTS = SUBJECT_ORDER.filter(s => s !== 'rev');
 
 const TOPICS = [
-/* ---- Probability & Statistics ---- */
+/* ---------------- Probability & Statistics ---------------- */
 {s:'ps', w:1, t:'Counting: permutations and combinations', f:'nPr = \\dfrac{n!}{(n-r)!},\\quad nCr = \\dfrac{n!}{r!(n-r)!}'},
 {s:'ps', w:1, t:'Probability axioms', f:'P(\\Omega)=1,\\ P(A)\\ge 0,\\ P\\left(\\bigcup_i A_i\\right)=\\sum_i P(A_i)'},
 {s:'ps', w:1, t:'Sample space', f:'P(A)=\\dfrac{n(A)}{n(\\Omega)}'},
@@ -51,7 +57,8 @@ const TOPICS = [
 {s:'ps', w:3, t:'z-test', f:'z=\\dfrac{\\bar X-\\mu_0}{\\sigma/\\sqrt n}'},
 {s:'ps', w:3, t:'t-test', f:'t=\\dfrac{\\bar X-\\mu_0}{s/\\sqrt n},\\ df=n-1'},
 {s:'ps', w:3, t:'Chi-squared test', f:'\\chi^2=\\sum \\dfrac{(O_i-E_i)^2}{E_i}'},
-/* ---- Linear Algebra ---- */
+
+/* ---------------- Linear Algebra ---------------- */
 {s:'la', w:4, t:'Vector space', tip:'A set closed under vector addition and scalar multiplication'},
 {s:'la', w:4, t:'Subspaces', f:'W\\subseteq V:\\ 0\\in W,\\ \\text{closed under }+,\\cdot'},
 {s:'la', w:4, t:'Linear dependence and independence of vectors', f:'c_1v_1+\\dots+c_nv_n=0 \\Rightarrow \\text{all }c_i=0'},
@@ -70,7 +77,8 @@ const TOPICS = [
 {s:'la', w:5, t:'Projections', f:'\\text{proj}_u(v)=\\dfrac{u\\cdot v}{u\\cdot u}\\,u'},
 {s:'la', w:5, t:'LU decomposition', f:'A=LU\\ \\text{(}L\\text{ lower, }U\\text{ upper)}'},
 {s:'la', w:5, t:'Singular value decomposition (SVD)', f:'A=U\\Sigma V^T'},
-/* ---- Calculus & Optimization ---- */
+
+/* ---------------- Calculus & Optimization ---------------- */
 {s:'co', w:6, t:'Functions of a single variable', f:'f:\\mathbb R \\to \\mathbb R'},
 {s:'co', w:6, t:'Limits', f:'\\lim_{x \\to a} f(x) = L \\iff \\forall \\epsilon >0, \\exists \\delta >0: |x-a| <\\delta \\Rightarrow |f(x)-L| <\\epsilon'},
 {s:'co', w:6, t:'Continuity', f:'f \\text{ continuous at } a \\iff \\lim_{x\\to a} f(x)=f(a)'},
@@ -92,7 +100,8 @@ const TOPICS = [
 {s:'co', w:8, t:'KKT conditions', f:'\\nabla f(x^*) + \\sum_i \\lambda_i \\nabla g_i(x^*) + \\sum_j \\mu_j \\nabla h_j(x^*) = 0'},
 {s:'co', w:8, t:'Gradient descent', f:'x_{t+1} = x_t - \\alpha \\nabla f(x_t)'},
 {s:'co', w:8, t:"Newton's method", f:'x_{t+1} = x_t - [H(x_t)]^{-1}\\nabla f(x_t)'},
-/* ---- PDSA ---- */
+
+/* ---------------- PDSA ---------------- */
 {s:'pdsa', w:9, t:'Arrays and linked lists', tip:'Basic sequential data structures'},
 {s:'pdsa', w:9, t:'Stacks and queues', tip:'LIFO and FIFO data structures'},
 {s:'pdsa', w:9, t:'Trees and binary trees', tip:'Hierarchical data structures'},
@@ -103,7 +112,8 @@ const TOPICS = [
 {s:'pdsa', w:10, t:'Asymptotic analysis: Big O, Theta, Omega', f:'O(f(n)), \\Theta(f(n)), \\Omega(f(n))'},
 {s:'pdsa', w:10, t:'Dynamic programming', tip:'Optimal substructure and overlapping subproblems'},
 {s:'pdsa', w:10, t:'Greedy algorithms', tip:'Make locally optimal choices'},
-/* ---- DBMS ---- */
+
+/* ---------------- DBMS ---------------- */
 {s:'dbms', w:11, t:'Relational data model', tip:'Tables, rows, columns, keys'},
 {s:'dbms', w:11, t:'SQL: SELECT, WHERE, JOIN', tip:'Fundamental query operations'},
 {s:'dbms', w:11, t:'Normalization: 1NF, 2NF, 3NF', tip:'Eliminating redundancy'},
@@ -111,7 +121,8 @@ const TOPICS = [
 {s:'dbms', w:11, t:'Indexing', tip:'B-tree and hash indices'},
 {s:'dbms', w:11, t:'Query optimization', tip:'Cost models and execution plans'},
 {s:'dbms', w:12, t:'Measures: computations', tip:'Aggregate functions: SUM, COUNT, AVG, MIN, MAX'},
-/* ---- Machine Learning ---- */
+
+/* ---------------- Machine Learning ---------------- */
 {s:'ml', w:9, t:'Regression and classification problems', f:'y=f(x)+\\epsilon\\ \\text{(regression)};\\quad y\\in\\{1,\\dots,K\\}\\ \\text{(classification)}'},
 {s:'ml', w:9, t:'Simple linear regression', f:'\\hat\\beta_1=\\dfrac{Cov(X,Y)}{Var(X)},\\quad \\hat\\beta_0=\\bar y-\\hat\\beta_1\\bar x'},
 {s:'ml', w:9, t:'Multiple linear regression', f:'\\hat\\beta=(X^TX)^{-1}X^Ty'},
@@ -135,7 +146,8 @@ const TOPICS = [
 {s:'ml', w:10, t:'Hierarchical clustering: complete/multiple-linkage', f:'d(A,B)=\\max_{a\\in A,\\,b\\in B}\\|a-b\\|'},
 {s:'ml', w:10, t:'Dimensionality reduction', tip:'Reduce feature count while preserving information'},
 {s:'ml', w:10, t:'Principal component analysis (PCA)', tip:'Eigenvectors of the covariance matrix, sorted by eigenvalue'},
-/* ---- AI ---- */
+
+/* ---------------- AI ---------------- */
 {s:'ai', w:11, t:'Search: uninformed', tip:'BFS, DFS, uniform-cost search — no heuristic used'},
 {s:'ai', w:11, t:'Search: informed', f:'f(n)=g(n)+h(n)\\ \\text{(A* search)}'},
 {s:'ai', w:11, t:'Search: adversarial', tip:'Minimax search, with alpha-beta pruning'},
@@ -144,7 +156,8 @@ const TOPICS = [
 {s:'ai', w:11, t:'Reasoning under uncertainty: conditional independence', f:'P(X,Y|Z)=P(X|Z)\\,P(Y|Z)'},
 {s:'ai', w:11, t:'Exact inference: variable elimination', tip:'Sum out variables one at a time via factor marginalization'},
 {s:'ai', w:11, t:'Approximate inference: sampling', tip:'Monte Carlo methods — likelihood weighting, Gibbs sampling'},
-/* ---- Revision ---- */
+
+/* ---------------- Revision ---------------- */
 {s:'rev', w:12, t:'Full revision — Probability, Linear Algebra, Calculus', tip:'Redo your formula sheet; work 10 mixed problems per topic'},
 {s:'rev', w:12, t:'Full revision — PDSA, DBMS, ML, AI', tip:'Redo your formula sheet; work 10 mixed problems per topic'},
 {s:'rev', w:12, t:'Previous year GATE DA paper — attempt 1', tip:'Simulate full 3-hour test conditions, no notes'},
@@ -154,219 +167,165 @@ const TOPICS = [
 {s:'rev', w:12, t:'Rework mistakes from mocks & weak topics', tip:'Keep a running error log — revisit it the night before the exam'},
 {s:'rev', w:12, t:'Final formula & concept sheet pass', tip:'One page per subject — glance through on exam morning only'}
 ];
-function _stableTopicId(subject, title){
+
+// IDs are derived from subject+title (not array position) so that reordering,
+// inserting, or removing topics later doesn't silently reassign a user's
+// already-saved progress (state.done is keyed by these ids) to the wrong topic.
+function _stableTopicId(subject, title) {
   const str = subject + '|' + title;
   let hash = 0;
-  for(let i=0;i<str.length;i++) hash = Math.imul(31, hash) + str.charCodeAt(i) | 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = Math.imul(31, hash) + str.charCodeAt(i) | 0;
+  }
   return 't' + Math.abs(hash).toString(36);
 }
 TOPICS.forEach(topic => topic.id = _stableTopicId(topic.s, topic.t));
 
-/* ===== Deep study modules ===== */
-const MATH_DB = {
-"counting: permutations and combinations":{def:"Rigorous combinatorics managing constraints, partitions, and allocations over discrete sets.",thm:"<h5>Stars and Bars Theorem</h5><p>The number of non-negative integer solutions to $\\sum_{i=1}^k x_i = n$ is $\\binom{n+k-1}{k-1}$. For positive integer solutions: $\\binom{n-1}{k-1}$.</p>",ctr:"<span class=\"counter-title\">Distinct vs Indistinct Objects</span>Conflating Stirling numbers of the second kind with standard combinations.",ex:"<p><strong>Problem:</strong> A router has 5 distinct queues and receives 12 identical packets. Find the probability that no queue remains empty.</p><p><strong>Solution:</strong> Total allocations: $\\binom{16}{4} = 1820$. Positive solutions: $\\binom{11}{4} = 330$. Probability $= \\frac{330}{1820} = \\frac{33}{182}$.</p>"},
-"probability axioms":{def:"A formal framework satisfying non-negativity, normalisation, and countable additivity for disjoint events.",thm:"<h5>Boole's Inequality (Union Bound)</h5><p>$$P\\left(\\bigcup_i A_i\\right) \\le \\sum_i P(A_i)$$Equality iff the events are mutually disjoint.</p>",ctr:"<span class=\"counter-title\">Negating Axiom Assumptions</span>$P(A \\cup B) \\ne P(A) + P(B)$ unless $A \\cap B = \\emptyset$.",ex:"<p><strong>Problem:</strong> A chip passes test A with 0.95, test B with 0.92, both with 0.88. Probability it fails at least one test?</p><p><strong>Solution:</strong> $P(A^c \\cup B^c) = P((A \\cap B)^c) = 1 - 0.88 = 0.12$.</p>"},
-"conditional probability":{def:"The probability of event $A$ given that $B$ has occurred, denoted $P(A|B)$ — a restricted sample space.",thm:"<h5>Chain Rule</h5><p>$P(A_1 \\cap \\cdots \\cap A_n) = P(A_1)P(A_2|A_1)\\cdots P(A_n|A_1 \\cap \\cdots \\cap A_{n-1})$</p>",ctr:"<span class=\"counter-title\">Reversing Conditioning Direction</span>Assuming $P(A|B) = P(B|A)$ without Bayes' theorem causes systematic diagnostic bias.",ex:"<p><strong>Problem:</strong> Test: 99% sensitivity, 98% specificity; prevalence 0.1%. Person tests positive — probability of disease?</p><p><strong>Solution:</strong> $P(T) = 0.99 \\cdot 0.001 + 0.02 \\cdot 0.999 = 0.02097$. $P(D|T) = \\frac{0.00099}{0.02097} \\approx 0.0472$ — about 4.72%.</p>"},
-"bayes' theorem":{def:"A rule for updating probability beliefs based on new evidence, enabling inference from prior knowledge and observed data.",thm:"<h5>Partition Form</h5><p>If $\\{B_1,\\ldots,B_n\\}$ partition the sample space: $$P(B_i|A) = \\frac{P(A|B_i)P(B_i)}{\\sum_{j=1}^n P(A|B_j)P(B_j)}$$</p>",ctr:"<span class=\"counter-title\">Prior Neglect Error</span>Ignoring the prior $P(B_i)$ when updating with evidence, treating all hypotheses as equally likely.",ex:"<p><strong>Problem:</strong> Urn 1: 3 red, 2 black; Urn 2: 2 red, 3 black; Urn 3: 1 red, 4 black. Urn chosen uniformly; red ball drawn. Posterior probability of Urn 1?</p><p><strong>Solution:</strong> $P(R) = \\frac{1}{3}\\left(\\frac{3}{5}+\\frac{2}{5}+\\frac{1}{5}\\right) = \\frac{2}{5}$. $P(U_1|R) = \\frac{\\frac{3}{5}\\cdot\\frac{1}{3}}{\\frac{2}{5}} = \\frac{1}{2}$.</p>"},
-"poisson distribution":{def:"Limiting form of Binomial with $n \\to \\infty$, $p \\to 0$, $np = \\lambda$ — models rare events in fixed intervals.",thm:"<h5>Additive Property</h5><p>If $X_1 \\sim \\text{Poi}(\\lambda_1)$, $X_2 \\sim \\text{Poi}(\\lambda_2)$ independent, then $X_1+X_2 \\sim \\text{Poi}(\\lambda_1+\\lambda_2)$.</p>",ctr:"<span class=\"counter-title\">Time Dependence & Clumping</span>Using a constant $\\lambda$ when events cluster temporally violates the memoryless independent-increments axiom.",ex:"<p><strong>Problem:</strong> Server faults at mean rate 3/hour (Poisson). Probability exactly 2 faults in the first 20 minutes given 5 in the first hour?</p><p><strong>Solution:</strong> $X \\sim \\text{Poi}(1)$ for 20 min, $Y \\sim \\text{Poi}(2)$ for the rest. $P(X{=}2|X{+}Y{=}5) = \\frac{P(X{=}2)P(Y{=}3)}{P(X{+}Y{=}5)} = \\frac{80}{243}$.</p>"},
-"normal distribution":{def:"The bell curve, fully characterized by mean $\\mu$ and standard deviation $\\sigma$.",thm:"<h5>Central Limit Theorem</h5><p>For i.i.d. variables with finite mean $\\mu$ and variance $\\sigma^2$: $$\\frac{\\bar{X}_n - \\mu}{\\sigma/\\sqrt{n}} \\xrightarrow{d} N(0,1)$$</p>",ctr:"<span class=\"counter-title\">Forgetting Non-Normality</span>Assuming normality without Shapiro-Wilk, Anderson-Darling, or Q-Q diagnostics.",ex:"<p><strong>Problem:</strong> Test scores are $N(500, 100^2)$. Proportion scoring between 400 and 650?</p><p><strong>Solution:</strong> $Z_1 = -1$, $Z_2 = 1.5$. $P(-1 \\le Z \\le 1.5) = \\Phi(1.5) - \\Phi(-1) \\approx 0.9332 - 0.1587 = 0.7745$.</p>"},
-"vector space":{def:"An algebraic structure closed under vector addition and scalar multiplication with the standard axioms.",thm:"<h5>Basis and Dimension Theorem</h5><p>Every vector space has a basis; all bases have the same cardinality — the dimension.</p>",ctr:"<span class=\"counter-title\">Confusing Span and Independence</span>A dependent set can still span; an independent set may span only a subspace.",ex:"<p><strong>Problem:</strong> Do $v_1=[1,0,1]^T$, $v_2=[0,1,1]^T$, $v_3=[1,1,2]^T$ form a basis for $\\mathbb{R}^3$?</p><p><strong>Solution:</strong> $v_3 = v_1 + v_2$, so the set is linearly dependent (rank 2) — not a basis; it spans a 2-D subspace.</p>"},
-"eigenvalues and eigenvectors":{def:"For matrix $A$, scalars $\\lambda$ and vectors $v \\ne 0$ satisfying $Av = \\lambda v$ — intrinsic stretching directions.",thm:"<h5>Spectral Theorem</h5><p>A symmetric matrix diagonalizes as $A = QDQ^T$ with orthonormal eigenvectors.</p>",ctr:"<span class=\"counter-title\">Not All Matrices Diagonalize</span>Defective matrices (algebraic > geometric multiplicity) require Jordan normal form.",ex:"<p><strong>Problem:</strong> Find eigenvalues/eigenvectors of $A = \\begin{pmatrix} 3 & 1 \\\\ 1 & 3 \\end{pmatrix}$.</p><p><strong>Solution:</strong> $\\det(A-\\lambda I) = (3-\\lambda)^2 - 1 = 0 \\Rightarrow \\lambda_1=2, \\lambda_2=4$. Eigenvectors: $[1,-1]^T$ and $[1,1]^T$.</p>"},
-"singular value decomposition (svd)":{def:"Factorization of any real matrix: $A = U \\Sigma V^T$.",thm:"<h5>Eckart–Young–Mirsky Theorem</h5><p>The optimal rank-$k$ approximation (Frobenius norm) keeps only the $k$ largest singular values.</p>",ctr:"<span class=\"counter-title\">Singular Value ≠ Eigenvalue</span>Singular values are non-negative square roots of eigenvalues of $A^TA$, not of $A$.",ex:"<p><strong>Problem:</strong> Find the SVD of $A = \\begin{pmatrix} 3 & 0 \\\\ 0 & -2 \\end{pmatrix}$.</p><p><strong>Solution:</strong> $A^TA = \\text{diag}(9,4)$ gives $\\sigma_1=3, \\sigma_2=2$. $U = \\text{diag}(1,-1)$, $V = I$, so $A = U\\Sigma V^T$.</p>"},
-"projection matrix":{def:"Orthogonal projection onto a subspace: $$P = A(A^TA)^{-1}A^T$$",thm:"<h5>Idempotency</h5><p>$P^2 = P = P^T$, and eigenvalues satisfy $\\lambda \\in \\{0,1\\}$.</p>",ctr:"<span class=\"counter-title\">Non-orthogonal Projections</span>$P = AA^T$ is wrong when columns of $A$ are not orthonormal.",ex:"<p><strong>Problem:</strong> Build the $3\\times3$ projection onto the plane spanned by $[1,1,0]^T$ and $[0,1,1]^T$.</p><p><strong>Solution:</strong> $A^TA = \\begin{pmatrix}2&1\\\\1&2\\end{pmatrix}$, $(A^TA)^{-1} = \\frac{1}{3}\\begin{pmatrix}2&-1\\\\-1&2\\end{pmatrix}$, giving $P = \\frac{1}{3}\\begin{pmatrix}2&1&-1\\\\1&2&1\\\\-1&1&2\\end{pmatrix}$.</p>"},
-"limits":{def:"$\\lim_{x \\to a} f(x) = L$ means $\\forall \\epsilon > 0, \\exists \\delta > 0: |x-a| < \\delta \\Rightarrow |f(x)-L| < \\epsilon$.",thm:"<h5>Limit Laws</h5><p>Sum, product and quotient (denominator $\\ne 0$) of convergent limits converge to the corresponding combination.</p>",ctr:"<span class=\"counter-title\">One-sided vs Two-sided</span>The two-sided limit exists only if both one-sided limits coincide.",ex:"<p><strong>Problem:</strong> Evaluate $\\lim_{x \\to 2} \\frac{x^2-4}{x-2}$.</p><p><strong>Solution:</strong> Factor: $\\frac{(x-2)(x+2)}{x-2} = x+2 \\to 4$.</p>"},
-"continuity":{def:"$f$ is continuous at $a$ if $\\lim_{x \\to a} f(x) = f(a)$ — no jumps or breaks.",thm:"<h5>Intermediate Value Theorem</h5><p>If $f$ is continuous on $[a,b]$ and $k$ lies between $f(a)$ and $f(b)$, $\\exists c \\in (a,b)$ with $f(c)=k$.</p>",ctr:"<span class=\"counter-title\">Dirichlet Function</span>$f(x)=1$ on $\\mathbb{Q}$, else $0$ — nowhere continuous.",ex:"<p><strong>Problem:</strong> $\\alpha(T) = \\frac{\\sqrt{T^2+16}-4}{T^2}$ for $T \\ne 0$, $\\alpha(0)=k$. Find $k$ for continuity.</p><p><strong>Solution:</strong> Rationalize: $\\lim_{T\\to 0} \\frac{1}{\\sqrt{T^2+16}+4} = \\frac{1}{8}$. So $k = 1/8$.</p>"},
-"chain rule":{def:"If $y = f(u)$, $u = g(x)$: $\\frac{dy}{dx} = \\frac{dy}{du}\\cdot\\frac{du}{dx}$.",thm:"<h5>Multivariable Form</h5><p>$D(f \\circ g) = Df \\cdot Dg$ (Jacobian multiplication).</p>",ctr:"<span class=\"counter-title\">Forgetting the Inner Derivative</span>$\\frac{d}{dx}\\sin(x^2) = \\cos(x^2)\\cdot 2x$, not $\\cos(x^2)$.",ex:"<p><strong>Problem:</strong> Differentiate $e^{-x^2}$.</p><p><strong>Solution:</strong> $u=-x^2 \\Rightarrow \\frac{dy}{dx} = e^u \\cdot (-2x) = -2x e^{-x^2}$.</p>"},
-"gradient descent":{def:"Iterative minimization: $x_{t+1} = x_t - \\alpha \\nabla f(x_t)$.",thm:"<h5>Convergence Rate</h5><p>For strongly convex $f$ with Lipschitz gradient: $f(x_t)-f^* \\le (1-2\\alpha\\mu)^t(f(x_0)-f^*)$.</p>",ctr:"<span class=\"counter-title\">Fixed Learning Rate Fallacy</span>Constant $\\alpha$ on poorly scaled gradients causes oscillation in steep directions, stagnation in shallow ones.",ex:"<p><strong>Problem:</strong> Minimize $f(x,y)=x^2+4y^2$ from $[2,1]^T$ with $\\alpha=0.1$, two iterations.</p><p><strong>Solution:</strong> $\\nabla f = [2x, 8y]^T$. It.1: $[2,1] - 0.1[4,8] = [1.6, 0.2]$. It.2: $[1.6,0.2] - 0.1[3.2,1.6] = [1.28, 0.04]$.</p>"},
-"convexity and convex functions":{def:"$f$ is convex if $f(\\lambda x + (1-\\lambda)y) \\le \\lambda f(x) + (1-\\lambda)f(y)$ for $\\lambda \\in [0,1]$.",thm:"<h5>Second-Order Characterization</h5><p>$f$ convex $\\iff$ Hessian $H(x)$ positive semidefinite everywhere.</p>",ctr:"<span class=\"counter-title\">Convex vs Concave</span>Convexity guarantees global optima for minimization; concave objectives need sign reversal.",ex:"<p><strong>Problem:</strong> Is $f(x,y) = x^2 + xy + y^2$ convex?</p><p><strong>Solution:</strong> $H = \\begin{pmatrix}2&1\\\\1&2\\end{pmatrix}$, eigenvalues $1, 3 > 0$ → positive definite → strictly convex.</p>"},
-"regression and classification problems":{def:"Regression predicts continuous $y = f(x) + \\epsilon$; classification assigns labels from $\\{1,\\ldots,K\\}$.",thm:"<h5>Bias-Variance Decomposition</h5><p>$E[(y-\\hat y)^2] = \\text{Bias}^2 + \\text{Var} + \\sigma^2$.</p>",ctr:"<span class=\"counter-title\">Ignoring Class Imbalance</span>Accuracy is misleading under imbalance; use precision, recall, F1, or AUC-ROC.",ex:"<p><strong>Problem:</strong> With 95% class 0 / 5% class 1, an all-zero classifier scores 95% accuracy. Why is this bad?</p><p><strong>Solution:</strong> Recall for class 1 is 0; F1 = 0. Use weighted loss, oversampling (SMOTE), or cost-sensitive learning.</p>"},
-"logistic regression":{def:"Models log-odds linearly: $\\log\\frac{p}{1-p} = \\beta_0 + \\beta_1 x$, giving $p = \\frac{1}{1+e^{-(\\beta_0+\\beta_1 x)}}$.",thm:"<h5>Maximum Likelihood</h5><p>$\\ell = \\sum_i [y_i \\log \\hat p_i + (1-y_i)\\log(1-\\hat p_i)]$, maximized via gradient ascent.</p>",ctr:"<span class=\"counter-title\">OLS on Binary Targets</span>Linear regression on binary outcomes can predict probabilities outside $[0,1]$.",ex:"<p><strong>Problem:</strong> With $\\log\\frac{p}{1-p} = -2 + 0.5x$, find $p$ at $x=4$.</p><p><strong>Solution:</strong> Odds $= e^0 = 1 \\Rightarrow p = 0.5$.</p>"},
-"support vector machine":{def:"Maximizes the margin: $\\max \\frac{2}{\\|w\\|}$ s.t. $y_i(w \\cdot x_i + b) \\ge 1$.",thm:"<h5>Kernel Trick</h5><p>Replace $x_i \\cdot x_j$ with $K(x_i, x_j)$ to operate in high-dimensional feature spaces implicitly.</p>",ctr:"<span class=\"counter-title\">Ignoring Feature Scaling</span>SVM margins are scale-sensitive; standardize features first.",ex:"<p><strong>Problem:</strong> Class 1: $(1,1),(2,2)$; Class 0: $(1,2),(2,1)$. Find a separating hyperplane.</p><p><strong>Solution:</strong> $x_1 + x_2 = 2.5$ separates the classes with margin $\\frac{1}{\\sqrt{2}}$.</p>"},
-"k-means clustering":{def:"Partitions data into $k$ clusters minimizing within-cluster variance: $\\min \\sum_k \\sum_{x \\in C_k} \\|x-\\mu_k\\|^2$.",thm:"<h5>Convergence Guarantee</h5><p>The objective decreases monotonically → finite convergence to a local minimum.</p>",ctr:"<span class=\"counter-title\">Initialization Sensitivity</span>Results depend heavily on initial centroids; use multiple restarts or k-means++.",ex:"<p><strong>Problem:</strong> Cluster $\\{[0,0],[0,2],[3,3],[3,5]\\}$ with $k=2$, initial centroids $[0,0]$, $[3,3]$.</p><p><strong>Solution:</strong> Assignment → $C_1=\\{[0,0],[0,2]\\}$, $C_2=\\{[3,3],[3,5]\\}$; new centroids $[0,1]$, $[3,4]$; assignments stable → converged.</p>"},
-"principal component analysis (pca)":{def:"Finds directions of maximum variance — eigenvectors of the covariance matrix sorted by eigenvalue.",thm:"<h5>Optimal Reconstruction</h5><p>The first $k$ components minimize squared reconstruction error over all $k$-dimensional subspaces.</p>",ctr:"<span class=\"counter-title\">Unscaled Features</span>Large-scale features dominate; standardize to zero mean, unit variance first.",ex:"<p><strong>Problem:</strong> Covariance $\\Sigma = \\begin{pmatrix}4&1\\\\1&2\\end{pmatrix}$. Find the first principal component.</p><p><strong>Solution:</strong> $\\lambda^2 - 6\\lambda + 7 = 0 \\Rightarrow \\lambda_1 = 3+\\sqrt{2} \\approx 4.414$. $v_1 \\propto [1, \\lambda_1 - 4]^T \\approx [1, 0.414]^T$ (normalized).</p>"}
+/* ============================================================
+   MATH DATABASE (deep study modules)
+   Keys cleaned: lowercase, trimmed — matches app.js lookup
+   (title = t.t.toLowerCase().trim()). All backslashes doubled.
+   ============================================================ */
+const MATH_DATABASE = {
+
+"counting: permutations and combinations": {
+  def: "Rigorous combinatorics managing constraints, partitions, and allocations over discrete sets using mappings.",
+  thm: "<h5>Stars and Bars Theorem</h5><p>The number of distinct non-negative integer solutions to $\\sum_{i=1}^k x_i = n$ is given exactly by $\\binom{n+k-1}{k-1}$. For positive integer solutions: $\\binom{n-1}{k-1}$.</p>",
+  ctr: "<span class=\"counter-title\">Distinct vs Indistinct Objects</span>Conflating Stirling numbers of the second kind (allocating distinct objects to indistinct buckets) with standard combinations.",
+  ex: "<p><strong>Problem:</strong> A network router has 5 distinct outbound processing queues. It receives 12 identical packets that must be allocated concurrently. Find the exact probability that no processing queue remains completely idle.</p><p><strong>Solution:</strong> This maps to finding the positive integer solutions to $x_1 + x_2 + x_3 + x_4 + x_5 = 12$. By applying Stars and Bars, total allocations without constraints is $\\binom{12+5-1}{5-1} = \\binom{16}{4} = 1820$. The number of positive integer solutions (no queue empty) is $\\binom{12-1}{5-1} = \\binom{11}{4} = 330$. Hence, the exact mathematical probability is $\\frac{330}{1820} = \\frac{33}{182}$.</p>"
+},
+
+"probability axioms": {
+  def: "A formal framework satisfying three fundamental postulates: non-negativity, normalisation, and countable additivity for disjoint events.",
+  thm: "<h5>Boole's Inequality (Union Bound)</h5><p>For any countable collection of events $\\{A_i\\}$: $$P\\left(\\bigcup_i A_i\\right) \\le \\sum_i P(A_i)$$ Equality holds if and only if the events are mutually disjoint.</p>",
+  ctr: "<span class=\"counter-title\">Negating Axiom Assumptions</span>Treating probability as additive when events overlap: $P(A \\cup B) \\ne P(A) + P(B)$ unless $A \\cap B = \\emptyset$.",
+  ex: "<p><strong>Problem:</strong> In a quality-control setting, the probability that a manufactured chip passes test A is 0.95, and passes test B is 0.92. The probability of passing both is 0.88. What is the probability that the chip fails at least one test?</p><p><strong>Solution:</strong> Let $A$ = passes test A, $B$ = passes test B. We want $P(A^c \\cup B^c) = P((A \\cap B)^c) = 1 - P(A \\cap B) = 1 - 0.88 = 0.12$. Alternatively, from $P(A \\cup B) = 0.95 + 0.92 - 0.88 = 0.99$, we get $P(A^c \\cap B^c) = 1 - 0.99 = 0.01$, and inclusion-exclusion on complements again gives $0.05 + 0.08 - 0.01 = 0.12$.</p>"
+},
+
+"conditional probability": {
+  def: "The probability of an event $A$ occurring given that event $B$ has already occurred, denoted $P(A|B)$, representing a restricted sample space.",
+  thm: "<h5>Chain Rule for Conditional Probability</h5><p>For events $A_1, A_2, \\ldots, A_n$: $$P(A_1 \\cap A_2 \\cap \\cdots \\cap A_n) = P(A_1)P(A_2|A_1)P(A_3|A_1 \\cap A_2)\\cdots P(A_n|A_1 \\cap \\cdots \\cap A_{n-1})$$</p>",
+  ctr: "<span class=\"counter-title\">Reversing Conditioning Direction</span>Assuming $P(A|B) = P(B|A)$ without applying Bayes' theorem leads to systematic bias in diagnostic and inference problems.",
+  ex: "<p><strong>Problem:</strong> A diagnostic test for a rare disease has 99% sensitivity (true positive rate) and 98% specificity (true negative rate). The disease prevalence is 0.1% in the population. If a randomly selected person tests positive, what is the probability they actually have the disease?</p><p><strong>Solution:</strong> Let $D$ = has disease, $T$ = tests positive. We want $P(D|T)$. By Bayes: $P(D|T) = \\frac{P(T|D)P(D)}{P(T)}$. Here: $P(T|D) = 0.99$, $P(D) = 0.001$, $P(T|D^c) = 1 - 0.98 = 0.02$, $P(D^c) = 0.999$. Thus: $P(T) = 0.99 \\cdot 0.001 + 0.02 \\cdot 0.999 = 0.00099 + 0.01998 = 0.02097$. Therefore: $P(D|T) = \\frac{0.00099}{0.02097} \\approx 0.0472$ or about 4.72%.</p>"
+},
+
+"bayes' theorem": {
+  def: "A fundamental rule for updating probability beliefs based on new evidence, enabling inference from prior knowledge and observed data.",
+  thm: "<h5>Extended Bayes' Theorem (Partition Form)</h5><p>If $\\{B_1, B_2, \\ldots, B_n\\}$ form a partition of the sample space, then: $$P(B_i|A) = \\frac{P(A|B_i)P(B_i)}{\\sum_{j=1}^n P(A|B_j)P(B_j)}$$</p>",
+  ctr: "<span class=\"counter-title\">Prior Neglect Error</span>Ignoring the prior $P(B_i)$ when updating with new evidence $A$, treating all hypotheses as equally likely regardless of background knowledge.",
+  ex: "<p><strong>Problem:</strong> Three urns contain balls: Urn 1 has 3 red and 2 black; Urn 2 has 2 red and 3 black; Urn 3 has 1 red and 4 black. An urn is selected uniformly at random, and a ball drawn from it is red. What is the posterior probability that Urn 1 was selected?</p><p><strong>Solution:</strong> Let $U_i$ = urn $i$ selected, $R$ = red ball drawn. Priors: $P(U_i) = 1/3$ for all $i$. Likelihoods: $P(R|U_1) = 3/5$, $P(R|U_2) = 2/5$, $P(R|U_3) = 1/5$. By the law of total probability: $P(R) = \\frac{1}{3}\\left(\\frac{3}{5} + \\frac{2}{5} + \\frac{1}{5}\\right) = \\frac{1}{3} \\cdot \\frac{6}{5} = \\frac{2}{5}$. By Bayes: $P(U_1|R) = \\frac{P(R|U_1)P(U_1)}{P(R)} = \\frac{\\frac{3}{5} \\cdot \\frac{1}{3}}{\\frac{2}{5}} = \\frac{1}{5} \\cdot \\frac{5}{2} = \\frac{1}{2}$.</p>"
+},
+
+"poisson distribution": {
+  def: "A limiting form of the Binomial distribution where $n \\to \\infty$ and $p \\to 0$ such that $np = \\lambda$, modeling rare events in fixed intervals.",
+  thm: "<h5>Additive Property of Independent Poisson Variables</h5><p>If $X_1 \\sim \\text{Poi}(\\lambda_1)$ and $X_2 \\sim \\text{Poi}(\\lambda_2)$ are independent, then $X_1 + X_2 \\sim \\text{Poi}(\\lambda_1 + \\lambda_2)$.</p>",
+  ctr: "<span class=\"counter-title\">Time Dependence & Clumping</span>Using a constant rate parameter $\\lambda$ when events display temporal clustering, which violates the memoryless independent increments axiom.",
+  ex: "<p><strong>Problem:</strong> A distributed cloud server encounters runtime faults at a mean rate of 3 errors per hour, matching a Poisson process. Calculate the exact conditional probability that exactly 2 faults occurred in the first 20 minutes, given that 5 faults occurred in the first hour.</p><p><strong>Solution:</strong> Let $X$ be faults in the first 20 mins ($t_1 = 1/3$ hour), so $X \\sim \\text{Poi}(\\lambda_1 = 3 \\times 1/3 = 1)$. Let $Y$ be faults in the remaining 40 mins, so $Y \\sim \\text{Poi}(\\lambda_2 = 2)$. We want $P(X=2 \\mid X+Y=5) = \\frac{P(X=2)P(Y=3)}{P(X+Y=5)}$. Evaluating: $\\frac{(e^{-1}\\frac{1^2}{2!}) \\cdot (e^{-2}\\frac{2^3}{3!})}{e^{-3}\\frac{3^5}{5!}} = \\frac{80}{243}$.</p>"
+},
+
+"normal distribution": {
+  def: "The bell curve distribution, ubiquitous in nature and statistics, fully characterized by its mean $\\mu$ and standard deviation $\\sigma$.",
+  thm: "<h5>Central Limit Theorem (CLT)</h5><p>For i.i.d. random variables $X_1, X_2, \\ldots, X_n$ with finite mean $\\mu$ and variance $\\sigma^2$, the standardized sample mean converges in distribution to the standard normal: $$\\frac{\\bar{X}_n - \\mu}{\\sigma/\\sqrt{n}} \\xrightarrow{d} N(0,1)$$</p>",
+  ctr: "<span class=\"counter-title\">Forgetting Non-Normality</span>Assuming that data follows a normal distribution without verifying through Shapiro-Wilk, Anderson-Darling, or Q-Q plot diagnostics.",
+  ex: "<p><strong>Problem:</strong> Scores on a standardized test are normally distributed with mean 500 and standard deviation 100. What proportion of test-takers score between 400 and 650?</p><p><strong>Solution:</strong> Let $X \\sim N(500, 100^2)$. Standardize: $Z_1 = \\frac{400-500}{100} = -1$, $Z_2 = \\frac{650-500}{100} = 1.5$. Thus: $P(400 \\le X \\le 650) = P(-1 \\le Z \\le 1.5) = \\Phi(1.5) - \\Phi(-1) = \\Phi(1.5) - (1-\\Phi(1)) \\approx 0.9332 - 0.1587 = 0.7745$ or 77.45%.</p>"
+},
+
+"vector space": {
+  def: "An algebraic structure consisting of a set of vectors, closed under vector addition and scalar multiplication, with defined properties like commutativity and distributivity.",
+  thm: "<h5>Basis and Dimension Theorem</h5><p>Any vector space has a basis (maximal linearly independent set), and all bases have the same cardinality, called the dimension of the space.</p>",
+  ctr: "<span class=\"counter-title\">Confusing Span and Linear Independence</span>A set of vectors can be linearly dependent but still span the space, and a linearly independent set may span only a subspace.",
+  ex: "<p><strong>Problem:</strong> Determine whether $v_1 = [1, 0, 1]^T$, $v_2 = [0, 1, 1]^T$, $v_3 = [1, 1, 2]^T$ form a basis for $\\mathbb{R}^3$.</p><p><strong>Solution:</strong> Form matrix $A = [v_1 | v_2 | v_3] = \\begin{pmatrix} 1 & 0 & 1 \\\\ 0 & 1 & 1 \\\\ 1 & 1 & 2 \\end{pmatrix}$. Row reduce: $R_3 \\leftarrow R_3 - R_1$ gives $\\begin{pmatrix} 1 & 0 & 1 \\\\ 0 & 1 & 1 \\\\ 0 & 1 & 1 \\end{pmatrix}$. Then $R_3 \\leftarrow R_3 - R_2$ gives $\\begin{pmatrix} 1 & 0 & 1 \\\\ 0 & 1 & 1 \\\\ 0 & 0 & 0 \\end{pmatrix}$. Rank = 2, so the vectors are linearly dependent and do not form a basis for $\\mathbb{R}^3$. They span a 2-dimensional subspace.</p>"
+},
+
+"eigenvalues and eigenvectors": {
+  def: "For matrix $A$, scalars $\\lambda$ and vectors $v \\ne 0$ satisfying $Av = \\lambda v$ represent intrinsic geometric stretching directions.",
+  thm: "<h5>Spectral Theorem</h5><p>A symmetric matrix $A$ can be diagonalized as $A = QDQ^T$ where $Q$ contains orthonormal eigenvectors and $D$ is diagonal with eigenvalues.</p>",
+  ctr: "<span class=\"counter-title\">Assuming All Matrices are Diagonalizable</span>Non-symmetric matrices may have defective eigenvalues (algebraic multiplicity exceeds geometric multiplicity) and require Jordan normal form.",
+  ex: "<p><strong>Problem:</strong> Find the eigenvalues and corresponding eigenvectors of $A = \\begin{pmatrix} 3 & 1 \\\\ 1 & 3 \\end{pmatrix}$.</p><p><strong>Solution:</strong> Characteristic polynomial: $\\det(A - \\lambda I) = \\det\\begin{pmatrix} 3-\\lambda & 1 \\\\ 1 & 3-\\lambda \\end{pmatrix} = (3-\\lambda)^2 - 1 = \\lambda^2 - 6\\lambda + 8 = (\\lambda-2)(\\lambda-4) = 0$. Eigenvalues: $\\lambda_1 = 2, \\lambda_2 = 4$. For $\\lambda_1 = 2$: $(A - 2I)v = \\begin{pmatrix} 1 & 1 \\\\ 1 & 1 \\end{pmatrix}v = 0 \\Rightarrow v_1 = [1, -1]^T$ (up to scaling). For $\\lambda_2 = 4$: $(A - 4I)v = \\begin{pmatrix} -1 & 1 \\\\ 1 & -1 \\end{pmatrix}v = 0 \\Rightarrow v_2 = [1, 1]^T$.</p>"
+},
+
+"singular value decomposition (svd)": {
+  def: "Factorization of any real matrix into orthogonal spaces and geometric singular extensions: $A = U \\Sigma V^T$.",
+  thm: "<h5>Eckart-Young-Mirsky Theorem</h5><p>The optimal rank-$k$ approximation of a matrix under the Frobenius norm is constructed by setting all but the $k$-largest singular values to 0.</p>",
+  ctr: "<span class=\"counter-title\">Singular Value vs Eigenvalue</span>Conflating the singular values of $A$ with eigenvalues of $A$. Singular values are always non-negative square roots of eigenvalues of $A^TA$.",
+  ex: "<p><strong>Problem:</strong> Find the exact Singular Value Decomposition (SVD) of the matrix $A = \\begin{pmatrix} 3 & 0 \\\\ 0 & -2 \\end{pmatrix}$.</p><p><strong>Solution:</strong> We compute $A^TA = \\begin{pmatrix} 9 & 0 \\\\ 0 & 4 \\end{pmatrix}$. The eigenvalues are $\\lambda_1=9, \\lambda_2=4$, which yields singular values $\\sigma_1=3, \\sigma_2=2$. The right singular vectors are $v_1=[1,0]^T, v_2=[0,1]^T$, meaning $V=I$. The left singular vectors are $u_1 = \\frac{1}{3}[3,0]^T = [1,0]^T$ and $u_2 = \\frac{1}{2}[0,-2]^T = [0,-1]^T$. Hence, $A = \\begin{pmatrix} 1 & 0 \\\\ 0 & -1 \\end{pmatrix} \\begin{pmatrix} 3 & 0 \\\\ 0 & 2 \\end{pmatrix} \\begin{pmatrix} 1 & 0 \\\\ 0 & 1 \\end{pmatrix}^T$.</p>"
+},
+
+"projection matrix": {
+  def: "An operator mapping a vector space orthogonally onto a lower-dimensional subspace without scaling alterations. $$P = A(A^TA)^{-1}A^T$$",
+  thm: "<h5>Idempotency and Eigenvalues</h5><p>For any valid projection matrix, $P^2 = P = P^T$, and its unique eigenvalues must satisfy $\\lambda \\in \\{0, 1\\}$.</p>",
+  ctr: "<span class=\"counter-title\">Non-orthogonal Projections</span>Assuming $P = AA^T$ projects correctly onto a subspace when column vectors of $A$ are not mutually orthogonal.",
+  ex: "<p><strong>Problem:</strong> Construct the precise $3 \\times 3$ projection matrix $P$ that maps any vector in $\\mathbb{R}^3$ onto the plane spanned by $v_1 = [1, 1, 0]^T$ and $v_2 = [0, 1, 1]^T$.</p><p><strong>Solution:</strong> Build matrix $A = \\begin{pmatrix} 1 & 0 \\\\ 1 & 1 \\\\ 0 & 1 \\end{pmatrix}$. Compute $A^TA = \\begin{pmatrix} 2 & 1 \\\\ 1 & 2 \\end{pmatrix}$. The inverse is $(A^TA)^{-1} = \\frac{1}{3}\\begin{pmatrix} 2 & -1 \\\\ -1 & 2 \\end{pmatrix}$. Finally, $P = A(A^TA)^{-1}A^T = \\frac{1}{3}\\begin{pmatrix} 2 & 1 & -1 \\\\ 1 & 2 & 1 \\\\ -1 & 1 & 2 \\end{pmatrix}$.</p>"
+},
+
+"limits": {
+  def: "Formal definition of convergence: $\\lim_{x \\to a} f(x) = L$ means for every $\\epsilon > 0$, there exists $\\delta > 0$ such that $|x-a| < \\delta \\Rightarrow |f(x)-L| < \\epsilon$.",
+  thm: "<h5>Limit Properties</h5><p>If $\\lim_{x \\to a} f(x) = L$ and $\\lim_{x \\to a} g(x) = M$, then: $\\lim_{x \\to a} [f(x) + g(x)] = L + M$, $\\lim_{x \\to a} [f(x)g(x)] = LM$, and $\\lim_{x \\to a} \\frac{f(x)}{g(x)} = \\frac{L}{M}$ (if $M \\ne 0$).</p>",
+  ctr: "<span class=\"counter-title\">One-sided vs Two-sided Limits</span>A function can have left and right limits that differ; the two-sided limit exists only if both one-sided limits coincide.",
+  ex: "<p><strong>Problem:</strong> Evaluate $\\lim_{x \\to 2} \\frac{x^2 - 4}{x - 2}$.</p><p><strong>Solution:</strong> Direct substitution yields $\\frac{0}{0}$, an indeterminate form. Factor: $\\frac{x^2-4}{x-2} = \\frac{(x-2)(x+2)}{x-2} = x+2$ (for $x \\ne 2$). Thus: $\\lim_{x \\to 2} \\frac{x^2-4}{x-2} = \\lim_{x \\to 2} (x+2) = 4$.</p>"
+},
+
+"continuity": {
+  def: "A function $f$ is continuous at $a$ if $\\lim_{x \\to a} f(x) = f(a)$, meaning no jumps or breaks at that point.",
+  thm: "<h5>Intermediate Value Theorem (IVT)</h5><p>If $f$ is continuous on $[a,b]$ and $k$ is between $f(a)$ and $f(b)$, then $\\exists c \\in (a,b)$ such that $f(c) = k$.</p>",
+  ctr: "<span class=\"counter-title\">Dirichlet Function Counterexample</span>$f(x) = 1$ if $x \\in \\mathbb{Q}$, else $0$. It is nowhere continuous because any interval contains both rational and irrational numbers.",
+  ex: "<p><strong>Problem:</strong> An expansion coefficient $\\alpha(T)$ at temperature $T$ is given by $\\alpha(T) = \\frac{\\sqrt{T^2 + 16} - 4}{T^2}$ for $T \\ne 0$, and $\\alpha(T) = k$ for $T=0$. Find $k$ to satisfy continuity at $T=0$.</p><p><strong>Solution:</strong> Evaluate $\\lim_{T \\to 0} \\frac{\\sqrt{T^2 + 16} - 4}{T^2}$. Rationalize: $\\frac{T^2}{T^2(\\sqrt{T^2+16}+4)} = \\frac{1}{\\sqrt{T^2+16}+4} \\to \\frac{1}{8}$. Thus, $k = 1/8$.</p>"
+},
+
+"chain rule": {
+  def: "If $y = f(u)$ and $u = g(x)$, then $\\frac{dy}{dx} = \\frac{dy}{du} \\cdot \\frac{du}{dx}$, enabling differentiation of composite functions.",
+  thm: "<h5>General Chain Rule (Multivariable)</h5><p>If $f: \\mathbb{R}^m \\to \\mathbb{R}$ and $g: \\mathbb{R}^n \\to \\mathbb{R}^m$, then $D(f \\circ g) = (Df) \\circ (Dg)$ in matrix form: $J = DF \\cdot DG$.</p>",
+  ctr: "<span class=\"counter-title\">Forgetting the Inner Derivative</span>Computing $\\frac{d}{dx}\\sin(x^2)$ as $\\cos(x^2)$ instead of $\\cos(x^2) \\cdot 2x$.",
+  ex: "<p><strong>Problem:</strong> Find $\\frac{d}{dx} e^{-x^2}$.</p><p><strong>Solution:</strong> Let $u = -x^2$, so $y = e^u$. By the chain rule: $\\frac{dy}{dx} = \\frac{dy}{du} \\cdot \\frac{du}{dx} = e^u \\cdot (-2x) = -2x e^{-x^2}$.</p>"
+},
+
+"gradient descent": {
+  def: "An iterative optimization algorithm that moves in the direction of the negative gradient to minimize a function: $x_{t+1} = x_t - \\alpha \\nabla f(x_t)$.",
+  thm: "<h5>Convergence Rate</h5><p>For strongly convex functions with Lipschitz gradients, gradient descent converges at a geometric rate: $f(x_t) - f^* \\le (1 - 2\\alpha\\mu)^t (f(x_0) - f^*)$, where $\\mu$ is the strong convexity parameter.</p>",
+  ctr: "<span class=\"counter-title\">Fixed Learning Rate Fallacy</span>Using a constant learning rate $\\alpha$ across non-uniformly scaled gradients can cause oscillation in steep directions and stagnation in shallow ones.",
+  ex: "<p><strong>Problem:</strong> Minimize $f(x, y) = x^2 + 4y^2$ starting from $[x_0, y_0]^T = [2, 1]^T$ using gradient descent with learning rate $\\alpha = 0.1$. Perform two iterations.</p><p><strong>Solution:</strong> Gradient: $\\nabla f = [2x, 8y]^T$. Iteration 1: $\\nabla f(2, 1) = [4, 8]^T$. $[x_1, y_1]^T = [2, 1]^T - 0.1[4, 8]^T = [1.6, 0.2]^T$. Iteration 2: $\\nabla f(1.6, 0.2) = [3.2, 1.6]^T$. $[x_2, y_2]^T = [1.6, 0.2]^T - 0.1[3.2, 1.6]^T = [1.28, 0.04]^T$.</p>"
+},
+
+"convexity and convex functions": {
+  def: "A function $f$ is convex if its graph lies below any line segment connecting two points on the graph: $f(\\lambda x + (1-\\lambda)y) \\le \\lambda f(x) + (1-\\lambda)f(y)$ for $\\lambda \\in [0,1]$.",
+  thm: "<h5>Second-Order Characterization</h5><p>A twice-differentiable function $f$ is convex if and only if its Hessian matrix $H(x)$ is positive semidefinite for all $x$ in the domain.</p>",
+  ctr: "<span class=\"counter-title\">Confusing Convex and Concave</span>Many optimization algorithms exploit convexity to guarantee global optima, but concave functions require sign reversal of the objective.",
+  ex: "<p><strong>Problem:</strong> Determine whether $f(x, y) = x^2 + xy + y^2$ is convex.</p><p><strong>Solution:</strong> Compute the Hessian: $H = \\begin{pmatrix} 2 & 1 \\\\ 1 & 2 \\end{pmatrix}$. Eigenvalues: $\\det(H - \\lambda I) = (2-\\lambda)^2 - 1 = \\lambda^2 - 4\\lambda + 3 = (\\lambda-1)(\\lambda-3) = 0$, giving $\\lambda_1 = 1, \\lambda_2 = 3$. Both eigenvalues are positive, so the Hessian is positive definite and $f$ is strictly convex.</p>"
+},
+
+"regression and classification problems": {
+  def: "Supervised learning tasks where regression predicts continuous outputs via $y = f(x) + \\epsilon$ and classification assigns discrete labels from $\\{1, \\ldots, K\\}$.",
+  thm: "<h5>Bias-Variance Decomposition</h5><p>For squared-error loss: $E[(y - \\hat{y})^2] = \\text{Bias}^2(\\hat{y}) + \\text{Var}(\\hat{y}) + \\sigma^2$, where $\\sigma^2$ is irreducible error.</p>",
+  ctr: "<span class=\"counter-title\">Ignoring Class Imbalance</span>In imbalanced classification, accuracy is a poor metric; use precision, recall, F1-score, or AUC-ROC instead.",
+  ex: "<p><strong>Problem:</strong> In a binary classification task with 95% class 0 and 5% class 1, a naive classifier predicting all samples as class 0 achieves 95% accuracy. Discuss why this is problematic.</p><p><strong>Solution:</strong> While accuracy is high, the classifier completely fails on the minority class (recall for class 1 = 0). Better metrics: F1-score = 0 (harmonic mean of precision and recall), AUC-ROC measures discrimination capability. For imbalanced data, use weighted loss, SMOTE for oversampling, or cost-sensitive learning.</p>"
+},
+
+"logistic regression": {
+  def: "Binary classification via modeling the log-odds as linear in features: $\\log\\frac{p}{1-p} = \\beta_0 + \\beta_1 x$, yielding $p = \\frac{1}{1 + e^{-(\\beta_0 + \\beta_1 x)}}$.",
+  thm: "<h5>Maximum Likelihood Estimation</h5><p>The log-likelihood for $n$ samples is $L = \\sum_{i=1}^n [y_i \\log(\\hat{p}_i) + (1-y_i) \\log(1-\\hat{p}_i)]$, maximized via gradient ascent.</p>",
+  ctr: "<span class=\"counter-title\">Linear Regression for Binary Outcomes</span>Using OLS regression on binary targets violates normality assumptions and can produce predicted probabilities outside [0,1].",
+  ex: "<p><strong>Problem:</strong> Given binary logistic regression model $\\log\\frac{p}{1-p} = -2 + 0.5x$, find the predicted probability for $x = 4$.</p><p><strong>Solution:</strong> Odds $= e^{-2 + 0.5(4)} = e^0 = 1$, so $p = \\frac{1}{1+1} = 0.5$. Interpretation: when $x = 4$, the predicted probability of the positive class is 50%.</p>"
+},
+
+"support vector machine": {
+  def: "A discriminative classifier maximizing the margin between classes by solving: $\\max \\frac{2}{\\|w\\|} \\text{ s.t. } y_i(w \\cdot x_i + b) \\ge 1$.",
+  thm: "<h5>Kernel Trick</h5><p>By replacing $x_i \\cdot x_j$ with kernel function $K(x_i, x_j)$, SVMs can solve non-linear problems in high-dimensional feature spaces without explicit transformation.</p>",
+  ctr: "<span class=\"counter-title\">Ignoring Feature Scaling</span>SVM is sensitive to feature magnitudes; features must be normalized (e.g., zero-mean, unit variance) for proper margin computation.",
+  ex: "<p><strong>Problem:</strong> In linearly separable 2D data with points $(1, 1)$ and $(2, 2)$ in class 1, and $(1, 2)$ and $(2, 1)$ in class 0, find a separating hyperplane and its margin.</p><p><strong>Solution:</strong> The candidate boundary $x_1 - x_2 = 0$ fails since $(1,1)$ lies on it. The correct separator is $x_1 + x_2 = 2.5$: class 1 points give sums $2 < 2.5$ and $4 > 2.5$... checking orientations, $(1,1) \\to 2$ and $(2,2) \\to 4$ lie on opposite sides of class 0 points $(1,2) \\to 3$ and $(2,1) \\to 3$. The maximal-margin separator is $x_1 + x_2 = 2.5$ with margin $\\frac{0.5}{\\sqrt{2}} = \\frac{1}{2\\sqrt{2}}$ on each side.</p>"
+},
+
+"k-means clustering": {
+  def: "Unsupervised learning algorithm partitioning data into $k$ clusters by minimizing within-cluster variance: $\\min \\sum_k \\sum_{x \\in C_k} \\|x - \\mu_k\\|^2$.",
+  thm: "<h5>Convergence Guarantee</h5><p>K-means is guaranteed to converge to a local minimum (not necessarily global) in finite iterations due to monotonically decreasing objective.</p>",
+  ctr: "<span class=\"counter-title\">Sensitivity to Initialization</span>K-means result heavily depends on initial cluster centers; multiple random restarts recommended.",
+  ex: "<p><strong>Problem:</strong> Cluster points $\\{[0,0], [0,2], [3,3], [3,5]\\}$ into $k=2$ clusters using K-means. Initialize centroids at $\\mu_1 = [0,0]$ and $\\mu_2 = [3,3]$.</p><p><strong>Solution:</strong> Iteration 1: Assign $[0,0]$ and $[0,2]$ to $C_1$, $[3,3]$ and $[3,5]$ to $C_2$. New centroids: $\\mu_1 = [0, 1]$, $\\mu_2 = [3, 4]$. Iteration 2: Recalculate assignments (distances from each point to updated centroids). Continue until convergence. Final clusters: $C_1 = \\{[0,0], [0,2]\\}$, $C_2 = \\{[3,3], [3,5]\\}$.</p>"
+},
+
+"principal component analysis (pca)": {
+  def: "Dimensionality reduction via identifying principal components: directions of maximum variance in the data, found as eigenvectors of the covariance matrix sorted by eigenvalue.",
+  thm: "<h5>Optimal Reconstruction Property</h5><p>The first $k$ principal components minimize the sum of squared reconstruction errors when projecting data onto a $k$-dimensional subspace.</p>",
+  ctr: "<span class=\"counter-title\">Unscaled Feature Handling</span>Features with large scales dominate PCA; standardize all features to zero mean and unit variance beforehand.",
+  ex: "<p><strong>Problem:</strong> For 2D data with covariance matrix $\\Sigma = \\begin{pmatrix} 4 & 1 \\\\ 1 & 2 \\end{pmatrix}$, find the first principal component.</p><p><strong>Solution:</strong> Eigenvalues: $\\det(\\Sigma - \\lambda I) = (4-\\lambda)(2-\\lambda) - 1 = \\lambda^2 - 6\\lambda + 7 = 0$, giving $\\lambda = 3 \\pm \\sqrt{2}$. Largest eigenvalue: $\\lambda_1 = 3 + \\sqrt{2} \\approx 4.414$. Eigenvector for $\\lambda_1$: $(\\Sigma - \\lambda_1 I)v = 0 \\Rightarrow (1-\\sqrt{2})v_1 + v_2 = 0$, so $v_1 \\propto [1, \\sqrt{2}-1]^T \\approx [1, 0.414]^T$ (after normalization).</p>"
+}
+
 };
-
-/* ===== Boss MCQs (a = correct index) ===== */
-const MCQS=[
- {s:0,q:"If A and B are mutually exclusive, P(A∪B) = ?",o:["P(A)·P(B)","P(A)+P(B)","P(A)−P(B)","1−P(A)P(B)"],a:1},
- {s:0,q:"For X ~ Binomial(n, p), E[X] = ?",o:["np(1−p)","n+p","np","p/n"],a:2},
- {s:0,q:"Which test checks independence of two categorical variables?",o:["z-test","t-test","Chi-squared test","Paired t-test"],a:2},
- {s:0,q:"By the CLT, the sampling distribution of the mean (large n) ≈ ?",o:["Uniform","Binomial","Exponential","Normal"],a:3},
- {s:0,q:"Bayes' theorem: P(A|B) = ?",o:["P(B|A)·P(A) / P(B)","P(A|B)·P(B) / P(A)","P(A∩B) / P(A)","P(A)+P(B)"],a:0},
- {s:0,q:"If A and B are independent, P(A∩B) = ?",o:["P(A)+P(B)","P(A|B)·P(A)","P(A)·P(B)","P(A∪B)"],a:2},
- {s:0,q:"The standard normal distribution has …",o:["mean 1, variance 0","mean 0, variance 1","mean 0, variance 0","mean 1, variance 1"],a:1},
- {s:0,q:"Mean of an Exponential(λ) random variable is …",o:["λ","1/λ","λ²","1/λ²"],a:1},
- {s:0,q:"Var(X) equals …",o:["E[X²] − (E[X])²","(E[X])² − E[X²]","E[X²] + (E[X])²","E[X]²"],a:0},
- {s:0,q:"For Poisson(λ), E[X] and Var(X) are …",o:["λ and λ²","λ and λ","λ² and λ","λ and 2λ"],a:1},
- {s:0,q:"Correlation ρ(X,Y) = 0 implies …",o:["X and Y are independent","X and Y are uncorrelated","X = Y","Var(X) = 0"],a:1},
- {s:0,q:"For ANY two events, P(A∪B) = ?",o:["P(A)+P(B)","P(A)·P(B)","P(A)+P(B)−P(A∩B)","P(A∩B)"],a:2},
- {s:1,q:"For an m×n matrix A, rank(A) + nullity(A) = ?",o:["m","n","m+n","m−n"],a:1},
- {s:1,q:"If A² = A, then A is …",o:["orthogonal","nilpotent","idempotent","singular"],a:2},
- {s:1,q:"The sum of eigenvalues of A equals its …",o:["determinant","trace","rank","norm"],a:1},
- {s:1,q:"The SVD factorizes A as …",o:["LU","QR","PDP⁻¹","UΣVᵀ"],a:3},
- {s:1,q:"For an orthogonal matrix Q, …",o:["QᵀQ = I","Q² = I","det Q = 0","Q = Qᵀ"],a:0},
- {s:1,q:"det [[a, b], [c, d]] = ?",o:["ad − bc","ab − cd","ac − bd","ad + bc"],a:0},
- {s:1,q:"Eigenvalues of a triangular matrix are …",o:["all zero","its diagonal entries","its singular values","always 1"],a:1},
- {s:1,q:"If det(A) ≠ 0, then A⁻¹ = ?",o:["adj(A)·det(A)","adj(A)/det(A)","det(A)/adj(A)","Aᵀ/det(A)"],a:1},
- {s:1,q:"Singular values of A are square roots of eigenvalues of …",o:["A","AᵀA","AA⁻¹","A+Aᵀ"],a:1},
- {s:1,q:"Eigenvalues of an idempotent matrix are …",o:["0 or 1","±1","always 1","complex pairs"],a:0},
- {s:1,q:"Ax = b is consistent iff …",o:["det(A)=0","rank(A) = rank([A|b])","A is symmetric","b = 0"],a:1},
- {s:1,q:"For n×n matrix A, det(kA) = ?",o:["k·det(A)","k²·det(A)","kⁿ·det(A)","det(A)+k"],a:2},
- {s:2,q:"lim(x→0) sin(x)/x = ?",o:["0","1","∞","Does not exist"],a:1},
- {s:2,q:"At an interior extremum of a differentiable f, …",o:["f′(x) = 0","f″(x) = 0","f(x) = 0","f′(x) > 0"],a:0},
- {s:2,q:"Taylor series of eˣ about 0 is …",o:["Σ xⁿ","Σ xⁿ/n!","Σ n·xⁿ","1 − x²/2 only"],a:1},
- {s:2,q:"f(x) = x³ − 3x has a local minimum at …",o:["x = −1","x = 0","x = 1","x = 3"],a:2},
- {s:2,q:"L'Hôpital's rule applies to which forms?",o:["0·∞ only","0/0 or ∞/∞","∞−∞ only","1^∞ only"],a:1},
- {s:2,q:"lim x→∞ (1 + 1/x)ˣ = ?",o:["1","∞","e","0"],a:2},
- {s:2,q:"f is strictly increasing where …",o:["f′(x) > 0","f′(x) < 0","f″(x) > 0","f(x) > 0"],a:0},
- {s:2,q:"At a local maximum, f′ changes sign from …",o:["− to +","+ to −","never changes","+ to +"],a:1},
- {s:2,q:"d/dx [f(g(x))] = ?",o:["f′(x)·g′(x)","f′(g(x))·g′(x)","f(g′(x))","f′(g(x))"],a:1},
- {s:2,q:"Rolle's theorem guarantees (f continuous, differentiable, f(a)=f(b)) …",o:["a root of f","a c with f′(c) = 0","f is constant","max at endpoints"],a:1},
- {s:3,q:"Binary search requires …",o:["a sorted array","a linked list","a hash table","O(n) extra space"],a:0},
- {s:3,q:"Worst-case time complexity of mergesort is …",o:["O(n²)","O(n log n)","O(log n)","O(n)"],a:1},
- {s:3,q:"BFS is naturally implemented with a …",o:["stack","heap","queue","priority queue"],a:2},
- {s:3,q:"Average-case lookup in a hash table is …",o:["O(n)","O(log n)","O(n log n)","O(1)"],a:3},
- {s:3,q:"Worst-case quicksort (bad pivots) is …",o:["O(n log n)","O(n²)","O(n)","O(log n)"],a:1},
- {s:3,q:"Which sorting algorithm is STABLE?",o:["Selection sort","Quicksort","Mergesort","Heapsort"],a:2},
- {s:3,q:"In-order traversal of a BST yields …",o:["reverse order","sorted order","level order","random order"],a:1},
- {s:3,q:"Space for an adjacency matrix of V vertices is …",o:["O(V)","O(V+E)","O(V²)","O(E)"],a:2},
- {s:3,q:"Load factor of a hash table with n keys and m slots is …",o:["m/n","n/m","n+m","n−m"],a:1},
- {s:3,q:"Worst-case of linear search is …",o:["O(1)","O(log n)","O(n)","O(n log n)"],a:2},
- {s:3,q:"Quicksort's design paradigm is …",o:["greedy","dynamic programming","divide and conquer","backtracking"],a:2},
- {s:3,q:"DFS is naturally implemented with …",o:["a queue","a stack / recursion","a heap","an index"],a:1},
- {s:3,q:"In Python, the built-in dynamic array-like structure is …",o:["tuple","dict","list","set"],a:2},
- {s:4,q:"In relational algebra, σ (sigma) denotes …",o:["project","select","join","union"],a:1},
- {s:4,q:"First normal form (1NF) requires …",o:["no transitive dependencies","atomic attribute values","no partial dependencies","a BCNF schema"],a:1},
- {s:4,q:"A star schema is built around a central …",o:["dimension table","fact table","index","normalised relation"],a:1},
- {s:4,q:"In BCNF, every determinant must be …",o:["a candidate key","a foreign key","numeric","unique-valued only"],a:0},
- {s:4,q:"CREATE TABLE is a ___ command.",o:["DML","DDL","DCL","TCL"],a:1},
- {s:4,q:"A NATURAL JOIN matches rows on …",o:["the primary key only","all common attributes","the first column","user-specified keys"],a:1},
- {s:4,q:"Foreign keys enforce …",o:["domain integrity","referential integrity","entity integrity","key uniqueness"],a:1},
- {s:4,q:"SQL evaluation starts with which clause?",o:["SELECT","ORDER BY","FROM","HAVING"],a:2},
- {s:4,q:"Armstrong's transitivity: X→Y and Y→Z imply …",o:["Y→X","X→Z","Z→X","X→YZ only"],a:1},
- {s:4,q:"2NF removes …",o:["transitive dependencies","partial dependencies","multivalued dependencies","all anomalies"],a:1},
- {s:4,q:"A fact table primarily stores …",o:["metadata only","measures and dimension keys","hierarchies","indexes"],a:1},
- {s:4,q:"Database indexes are commonly built with …",o:["B+ trees","stacks","queues","BFS"],a:0},
- {s:5,q:"Ridge regression uses which penalty?",o:["L1 norm","L∞ norm","L2 norm","No penalty"],a:2},
- {s:5,q:"Naive Bayes is 'naive' because it assumes …",o:["balanced classes","features are conditionally independent given the class","Gaussian data","no noise in labels"],a:1},
- {s:5,q:"Leave-one-out CV on n samples uses how many folds?",o:["2","10","√n","n"],a:3},
- {s:5,q:"The first principal component maximizes …",o:["class separation","variance of projections","distance to origin","entropy"],a:1},
- {s:5,q:"Logistic regression outputs …",o:["a hyperplane directly","a probability via the sigmoid","cluster labels","eigenvalues"],a:1},
- {s:5,q:"Lasso regression uses which penalty?",o:["L1 norm","L2 norm","L∞ norm","No penalty"],a:0},
- {s:5,q:"Gradient descent updates parameters via …",o:["θ ← θ + α∇J(θ)","θ ← θ − α∇J(θ)","θ ← α·∇J(θ)","θ ← θ²"],a:1},
- {s:5,q:"Entropy of a PURE node is …",o:["1","0","0.5","∞"],a:1},
- {s:5,q:"Gini impurity = ?",o:["1 − Σ pᵢ²","Σ pᵢ log pᵢ","Σ pᵢ²","−Σ pᵢ log₂ pᵢ"],a:0},
- {s:5,q:"The geometric margin of an SVM hyperplane is …",o:["‖w‖","2/‖w‖","1/‖w‖²","‖w‖/2"],a:1},
- {s:5,q:"Overfitting typically shows …",o:["high train & high test error","low train error, high test error","high train error, low test error","low both"],a:1},
- {s:5,q:"k-medoids differs from k-means because centers are …",o:["the origin","actual data points (medoids)","random non-data points","always 0/1"],a:1},
- {s:5,q:"Single-linkage hierarchical clustering uses …",o:["max pairwise distance","min pairwise distance","mean distance","centroid distance"],a:1},
- {s:5,q:"R² (coefficient of determination) = ?",o:["RSS/TSS","1 − RSS/TSS","TSS/RSS","1 + RSS/TSS"],a:1},
- {s:5,q:"ReLU(z) = ?",o:["1/(1+e⁻ᶻ)","max(0, z)","tanh(z)","z²"],a:1},
- {s:5,q:"Ridge regression ___ coefficients.",o:["sets most to exactly zero","shrinks all toward zero","inflates","removes"],a:1},
- {s:6,q:"A* search is optimal when the heuristic is …",o:["random","admissible","overestimating","constant"],a:1},
- {s:6,q:"Minimax search is used for …",o:["single-agent pathfinding","adversarial games","sorting","clustering"],a:1},
- {s:6,q:"Variable elimination is a method of ___ inference.",o:["approximate","exact","local","heuristic"],a:1},
- {s:6,q:"Which of these is an UNINFORMED search?",o:["A*","Greedy best-first","BFS","Hill climbing"],a:2},
- {s:6,q:"A* evaluates nodes using …",o:["f(n) = h(n) − g(n)","f(n) = g(n) + h(n)","f(n) = g(n)·h(n)","f(n) = h(n)"],a:1},
- {s:6,q:"Uniform-cost search expands the node with …",o:["lowest h","lowest path cost g","highest g","random choice"],a:1},
- {s:6,q:"In alpha–beta pruning, a branch is cut when …",o:["α ≥ β","α < β","g > h","depth = 0 only"],a:0},
- {s:6,q:"Resolution: (A∨B) and (¬B∨C) resolve to …",o:["A∨C","A∧C","B∨C","¬A∨C"],a:0},
- {s:6,q:"∀x P(x) asserts …",o:["P holds for some x","P holds for every x","P is false","P is unknown"],a:1},
- {s:6,q:"A belief network factorizes the joint as …",o:["Σ P(Xᵢ)","Π P(Xᵢ | Parents(Xᵢ))","max P(Xᵢ)","Π P(Xᵢ)"],a:1},
- {s:6,q:"Rejection sampling keeps only samples that …",o:["maximize the prior","are consistent with the evidence","are outliers","minimize entropy"],a:1},
- {s:6,q:"Iterative deepening gives …",o:["BFS memory, DFS completeness","DFS memory with BFS completeness/optimality","no completeness","greedy optimality"],a:1}
-];
-
-/* ===== GATE-style NAT (tolerance ±0.05) ===== */
-const NATS=[
- {s:0,q:"P(A)=0.4, P(B)=0.5, A and B independent. P(A∩B)?",a:0.2},
- {s:0,q:"X ~ Binomial(8, 0.5). E[X]?",a:4},
- {s:0,q:"X ~ Poisson(2.5). Var(X)?",a:2.5},
- {s:1,q:"Determinant of [[3, 2], [1, 4]]?",a:10},
- {s:1,q:"A is 4×6 with rank 4. Nullity of A?",a:2},
- {s:1,q:"Eigenvalues of A are 2, 3, 5. Trace of A?",a:10},
- {s:2,q:"f(x) = x² − 6x + 10. Minimum value of f?",a:1},
- {s:2,q:"d/dx(x³) evaluated at x = 2?",a:12},
- {s:3,q:"Binary search on a sorted array of 1024 elements needs at most ≈ log₂(1024) comparisons = ?",a:10},
- {s:5,q:"Entropy of a fair coin flip, in bits?",a:1},
- {s:5,q:"Simple regression: r=0.8, sₓ=2, s_y=4. Slope β₁ = r·s_y/sₓ = ?",a:1.6},
- {s:6,q:"A* search: g(n)=5, h(n)=3. f(n)?",a:8}
-];
-
-/* ===== Concept Reels ===== */
-const FLASH=[
- {s:0,q:"State Bayes' theorem.",a:"P(A|B) = P(B|A)·P(A) / P(B)"},
- {s:0,q:"Variance of Binomial(n, p)?",a:"np(1−p)"},
- {s:0,q:"PMF vs PDF?",a:"PMF → discrete: P(X=x). PDF → continuous; integrate over an interval to get probability."},
- {s:0,q:"What does the CLT say?",a:"For large n, X̄ ≈ N(μ, σ²/n) regardless of the population shape (finite variance)."},
- {s:0,q:"z-test vs t-test?",a:"z: σ known (or huge n). t: σ unknown, small n → heavier tails, df = n−1."},
- {s:0,q:"Cov(X, Y) = ?",a:"E[XY] − E[X]·E[Y]"},
- {s:0,q:"Median and mode?",a:"Median = middle of sorted data (robust to outliers). Mode = most frequent value."},
- {s:0,q:"Correlation ρ = ±1 / 0 means?",a:"±1 = perfect linear relation; 0 = uncorrelated (NOT necessarily independent)."},
- {s:0,q:"CDF ↔ PDF relationship?",a:"F(x) = P(X≤x) = ∫₋∞ˣ f(t)dt, and f(x) = F′(x)."},
- {s:0,q:"Which distribution is memoryless?",a:"Exponential: P(X>s+t | X>s) = P(X>t)."},
- {s:0,q:"z critical value for a 95% CI?",a:"≈ 1.96 (90% → 1.645, 99% → 2.576)."},
- {s:0,q:"t-distribution vs normal?",a:"Heavier tails; approaches N(0,1) as df → ∞."},
- {s:1,q:"When is A invertible?",a:"det(A) ≠ 0 ⇔ full rank ⇔ no zero eigenvalue."},
- {s:1,q:"Define an eigenvector.",a:"Av = λv with v ≠ 0 — direction unchanged by A."},
- {s:1,q:"Rank–nullity theorem?",a:"rank(A) + nullity(A) = number of columns of A."},
- {s:1,q:"Why do we care about SVD?",a:"Compression, denoising, PCA, pseudo-inverse, recommenders. Best rank-k approx keeps top-k σ."},
- {s:1,q:"Projection matrix property?",a:"Idempotent: P² = P (and P = Pᵀ for orthogonal projections)."},
- {s:1,q:"Trace?",a:"Sum of diagonal entries = sum of eigenvalues."},
- {s:1,q:"det of a 2×2 matrix?",a:"det [[a,b],[c,d]] = ad − bc."},
- {s:1,q:"Eigenvalues of a real symmetric matrix?",a:"All real; eigenvectors for distinct eigenvalues are orthogonal."},
- {s:1,q:"Diagonalization?",a:"A = PDP⁻¹ where D = diag(λᵢ), columns of P are eigenvectors."},
- {s:1,q:"LU decomposition?",a:"A = LU — L lower-triangular, U upper-triangular; fast linear solves."},
- {s:2,q:"Definition of the derivative?",a:"f′(x) = lim h→0 [f(x+h) − f(x)] / h"},
- {s:2,q:"Second derivative test?",a:"f′(c)=0 and f″(c)<0 → local max; f″(c)>0 → local min."},
- {s:2,q:"Continuity at x = a?",a:"lim x→a f(x) exists and equals f(a)."},
- {s:2,q:"L'Hôpital's rule?",a:"For 0/0 or ∞/∞: lim f/g = lim f′/g′."},
- {s:2,q:"lim x→∞ (1+1/x)ˣ = ?",a:"e."},
- {s:2,q:"Maclaurin series of sin x?",a:"x − x³/3! + x⁵/5! − …"},
- {s:2,q:"Maclaurin series of ln(1+x)?",a:"x − x²/2 + x³/3 − … for |x| ≤ 1."},
- {s:2,q:"Concavity?",a:"f″>0 → concave up (convex); f″<0 → concave down; inflection where f″ changes sign."},
- {s:3,q:"Best case of insertion sort?",a:"O(n) — when the array is already sorted."},
- {s:3,q:"When can you use binary search?",a:"Sorted array → O(log n) lookups."},
- {s:3,q:"DFS vs BFS machinery?",a:"DFS: stack / recursion, goes deep. BFS: queue, layer by layer."},
- {s:3,q:"Mergesort vs quicksort?",a:"Mergesort: guaranteed O(n log n), stable, O(n) space. Quicksort: fast in practice, worst O(n²)."},
- {s:3,q:"Handling hash collisions?",a:"Chaining, or open addressing (linear/quadratic probing, double hashing)."},
- {s:3,q:"What does Big-O mean?",a:"Asymptotic upper bound: f(n) ≤ c·g(n) for n ≥ n₀."},
- {s:3,q:"Which sorts are stable?",a:"Bubble, insertion, mergesort. (Selection, quick, heap are not.)"},
- {s:3,q:"BST property?",a:"left < node < right; in-order traversal gives sorted order."},
- {s:3,q:"Dijkstra's catch?",a:"Only works with non-negative edge weights."},
- {s:3,q:"Hash load factor?",a:"λ = n/m; chaining expected chain length ≈ λ."},
- {s:4,q:"What does a foreign key enforce?",a:"Referential integrity — FK must reference an existing PK (or be NULL)."},
- {s:4,q:"Why normalize?",a:"Kill redundancy + insert/update/delete anomalies (1NF → BCNF)."},
- {s:4,q:"Star vs snowflake schema?",a:"Star: denormalized dimensions. Snowflake: normalized dimension sub-tables."},
- {s:4,q:"OLTP vs OLAP?",a:"OLTP = daily transactions. OLAP = analytical, read-heavy, warehousing."},
- {s:4,q:"DDL vs DML?",a:"DDL: CREATE/ALTER/DROP. DML: SELECT/INSERT/UPDATE/DELETE."},
- {s:4,q:"Outer joins?",a:"Left/right/full keep unmatched rows, padded with NULLs."},
- {s:4,q:"Candidate vs primary key?",a:"Candidate keys = minimal superkeys; primary = the one chosen to identify rows."},
- {s:4,q:"OLAP operations?",a:"Roll-up, drill-down, slice, dice, pivot."},
- {s:4,q:"Sampling strategies?",a:"Simple random, stratified, reservoir (for streams)."},
- {s:5,q:"L1 vs L2 regularisation?",a:"L1 (lasso) → sparse weights / feature selection. L2 (ridge) → shrinks weights smoothly."},
- {s:5,q:"Small vs large k in k-NN?",a:"Small k: low bias, high variance (noisy). Large k: smoother, higher bias."},
- {s:5,q:"Elbow method?",a:"Plot WCSS vs k; pick where the curve bends."},
- {s:5,q:"Bias–variance trade-off?",a:"Error = bias² + variance + noise. Balance underfitting vs overfitting."},
- {s:5,q:"The sigmoid function?",a:"σ(z) = 1/(1+e⁻ᶻ) — squashes ℝ into (0,1)."},
- {s:5,q:"Normal equation?",a:"β = (XᵀX)⁻¹Xᵀy — closed-form least squares."},
- {s:5,q:"Simple regression slope?",a:"β₁ = Σ(x−x̄)(y−ȳ) / Σ(x−x̄)² = r·s_y/s_x."},
- {s:5,q:"Entropy?",a:"H = −Σ p log₂ p ∈ [0,1]; measures impurity/uncertainty."},
- {s:5,q:"Information gain?",a:"Gain = H(parent) − Σ (|Sᵥ|/|S|)·H(Sᵥ)."},
- {s:5,q:"SVM kernel trick?",a:"Kernels compute inner products in a high-dim space without mapping explicitly."},
- {s:5,q:"GD variants?",a:"Batch (full data), mini-batch, SGD (one sample per step)."},
- {s:5,q:"Why ReLU over sigmoid in deep nets?",a:"ReLU(z)=max(0,z) — cheap, mitigates vanishing gradients."},
- {s:5,q:"Complete linkage?",a:"Cluster distance = maximum pairwise distance (single = minimum)."},
- {s:5,q:"PCA explained variance?",a:"λᵢ / Σλⱼ — share of total variance captured by component i."},
- {s:6,q:"Admissible heuristic?",a:"Never overestimates the true cost: h(n) ≤ h*(n)."},
- {s:6,q:"Alpha–beta pruning?",a:"Skips minimax branches that can't affect the decision (cut when α ≥ β)."},
- {s:6,q:"Modus ponens?",a:"From A and A⇒B, infer B."},
- {s:6,q:"Rejection sampling?",a:"Sample from the prior, keep samples consistent with evidence → approximate inference."},
- {s:6,q:"Uniform-cost search?",a:"Expands lowest path-cost g; optimal with positive step costs (Dijkstra-like)."},
- {s:6,q:"Iterative deepening?",a:"Repeated depth-limited DFS: BFS completeness/optimality with DFS memory."},
- {s:6,q:"CNF?",a:"Conjunction of clauses (disjunctions of literals) — input format for resolution."},
- {s:6,q:"d-separation?",a:"Graph criterion identifying conditional independencies in belief networks."}
-];
-
-const TITLES=["Fresher","Curious Cat","Grinder","Scholar","Problem Slayer","Data Adept","ML Mage","Algorithmist","Grandmaster","GATE Crusher","IIT-M Bound"];
-const TIPS=["The syllabus is a skill tree. Every punch is permanent power.","Active recall (Reels/Boss) beats re-reading by 2–3×. Science.","25 focused minutes > 3 hours of distracted 'studying'.","Streaks die at midnight. Do at least ONE thing today.","A 🧊 Streak Freeze costs 150 coins. Your streak costs more.","Bosses drop bonus loot on the first kill. Clear all 7.","NAT questions accept ±0.05 — just like real GATE.","You don't need motivation. You need a streak to protect."];
