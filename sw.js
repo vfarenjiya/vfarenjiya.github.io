@@ -1,25 +1,18 @@
-const CACHE_NAME = 'tracker-cache-v4';
+const CACHE_NAME = 'gate-quest-final-v1';
 const ASSETS = [
-  './', './index.html', './styles.css', './data.js', './app.js',
+  './', './index.html', './styles.css', './data.js', './formulas.js', './app.js',
   './manifest.json', './icon.svg',
   'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css',
   'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js',
-  'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/fonts/KaTeX_Main-Regular.woff2',
-  'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/fonts/KaTeX_Math-Italic.woff2'
+  'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/fonts/KaTeX_Main-Regular.woff2'
 ];
-
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)).catch(err => console.log('Precache partial:', err)));
   self.skipWaiting();
 });
-
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
-
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
