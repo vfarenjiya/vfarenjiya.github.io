@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14161c">
+<title>GATE DA · Advanced Boarding Pass</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">GATE · Data Science &amp; AI</div>
+    <h1>Advanced Boarding Pass</h1>
+    <p class="sub">Rigorous Syllabus Tracker with Deep Mathematical Modules &amp; Hard Problems.</p>
+  </header>
+
+  <div class="console">
+    <div class="ring-wrap">
+      <div class="ring">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="6"></circle>
+          <circle id="ringFill" cx="32" cy="32" r="27" fill="none" stroke="var(--amber)" stroke-width="6"
+                  stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="169.6"></circle>
+        </svg>
+        <div class="ring-pct" id="ringPct">0%</div>
+      </div>
+      <div class="ring-label">Overall<br><b id="ringFrac">0 / 0</b></div>
+    </div>
+    <div class="stat"><span class="num flame">🔥 <span id="streakNum">0</span></span><span class="lbl">Day streak</span></div>
+    <div class="exam-input">
+      <label for="examDate">Exam day</label>
+      <input type="date" id="examDate">
+      <span class="hint" id="daysLeftHint">Set your exam date to see a countdown</span>
+    </div>
+    <button class="log-btn" id="logBtn">Log today's lecture</button>
+  </div>
+
+  <div class="switch-row">
+    <div class="switch" id="viewSwitch">
+      <button data-view="subject" class="active">By Subject</button>
+      <button data-view="week">12-Week Plan</button>
+    </div>
+    <div class="plan-start" id="planStartRow" style="display:none">
+      <label for="planStart">Plan starts</label>
+      <input type="date" id="planStart">
+    </div>
+  </div>
+
+  <div class="tools-row">
+    <input id="searchBox" type="search" placeholder="Search topics, formulas, tips…">
+    <div class="tools-btns">
+      <button id="themeToggleBtn" title="Toggle theme">🌓 Theme</button>
+      <button id="fontMinusBtn" title="Smaller text">A−</button>
+      <button id="fontPlusBtn" title="Bigger text">A+</button>
+      <button id="expandAllBtn">Expand All</button>
+      <button id="collapseAllBtn">Collapse All</button>
+    </div>
+  </div>
+
+  <div class="match-count" id="matchCount"></div>
+  <div id="ticketContainer"></div>
+
+  <div class="footer-row">
+    <span class="hint">✓ Punch topics · “Study Math” opens deep modules with hard problems.</span>
+    <button class="reset-btn" id="resetBtn">Reset all progress</button>
+  </div>
+</div>
+
+<div class="pwa-banner hidden" id="pwaBanner">
+  <img class="pwa-banner-icon" src="icon.svg" alt="">
+  <div class="pwa-banner-text">
+    <strong>Install GATE DA</strong>
+    <span>Add it to your home screen for quick, full-screen access.</span>
+  </div>
+  <div class="pwa-banner-actions">
+    <button class="pwa-btn-solid" id="pwaInstall">Install</button>
+    <button class="pwa-btn-ghost" id="pwaDismiss">Not now</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
