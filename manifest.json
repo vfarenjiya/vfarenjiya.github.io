@@ -1,0 +1,36 @@
+{
+  "id": "./",
+  "name": "GATE Quest — DA 2027",
+  "short_name": "GATE Quest",
+  "description": "Gamified GATE DA prep: syllabus tracker, reels, bosses, formula vault, mock tests.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Daily Mix",
+      "short_name": "Mix",
+      "description": "Jump into a timed 10-question quiz",
+      "url": "./index.html?tab=arena",
+      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Mock Test",
+      "short_name": "Mock",
+      "description": "GATE-pattern full mock",
+      "url": "./index.html?tab=mock",
+      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+    }
+  ]
+}
