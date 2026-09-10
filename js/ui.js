@@ -31,7 +31,8 @@ function frame(now) {
       while (n-- > 0) { doStep(mode === 'play'); if (respawnT > 0) break; }
     }
   }
-  render(dt, now / 1000);
+  
+  try { render(dt, now / 1000); } catch (e) { console.error('render:', e); }
   if (chartDirty) { drawChart(); chartDirty = false; }
   hudT += dt; if (hudT > .12) { hudT = 0; updateHud(); }
   requestAnimationFrame(frame);
