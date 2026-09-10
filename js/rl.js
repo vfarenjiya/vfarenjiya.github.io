@@ -4,9 +4,27 @@ const A_BUF = new Uint8Array(REPLAY), R_BUF = new Float32Array(REPLAY), D_BUF = 
 let repLen = 0, repHead = 0;
 const tmpF = new Float32Array(IN);
 const S_TMP = new Uint8Array(IN), S2_TMP = new Uint8Array(IN);
+const tmpGrid = new Uint8Array(CELLS);
 const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 const phi = () => -PHI_K * manhattan(env.snake[0], env.food);
 
+/* Egocentric encode: board rotated so the head sits at (EX,EY) facing "up".
+   ch0 body · ch1 head · ch2 food · ch3 wall/out-of-bounds. */
+function encode(out, sn, food) {
+  out.fill(0); tmpGrid.fill(0);
+  for (let i = 0; i < sn.length; i++) tmpGrid[sn[i].y * GW + sn[i].x] = 1;
+  const h = sn[0], f = DIRS[env.dir], r0 = -f[1], r1 = f[0];
+  for (let cy = 0; cy < GH; cy++) for (let cx = 0; cx < GW; cx++) {
+    const fr = cy - EY, rc = cx - EX;
+    const wx = h.x + f[0] * fr + r0 * rc;
+    const wy = h.y + f[1] * fr + r1 * rc;
+    const o = (cy * GW + cx) * CH;
+    if (wx < 0 || wx >= GW || wy < 0 || wy >= GH) { out[o + 3] = 1; continue; }
+    if (wx === h.x && wy === h.y) { out[o + 1] = 1; continue; }
+    if (tmpGrid[wy * GW + wx]) { out[o] = 1; continue; }
+    if (wx === food.x && wy === food.y) out[o + 2] = 1;
+  }
+}
 function placeFood() {
   do { env.food = { x: (Math.random() * GW) | 0, y: (Math.random() * GH) | 0 }; }
   while (env.snake.some(s => s.x === env.food.x && s.y === env.food.y));
@@ -16,12 +34,6 @@ function beginEpisode() {
   env.prev = env.snake.map(s => ({ ...s }));
   env.dir = 0; env.steps = 0; env.noEat = 0; env.ret = 0; env.done = false; env.foods = 0;
   placeFood(); env.stepAt = performance.now();
-}
-function encode(out, sn, food) {
-  out.fill(0);
-  for (let i = 0; i < sn.length; i++) { const p = sn[i]; out[(p.y * GW + p.x) * CH] = 1; }
-  const h = sn[0]; out[(h.y * GW + h.x) * CH + 1] = 1;
-  out[(food.y * GW + food.x) * CH + 2] = 1;
 }
 function stepEnv(greedy) {
   const s = S_TMP; encode(s, env.snake, env.food);
@@ -120,11 +132,11 @@ function endEpisode(greedy) {
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-const KEY = 'snake-dqn-v2';
+const KEY = 'snake-dqn-v3';
 function saveBrain(manual) {
   try {
     localStorage.setItem(KEY, JSON.stringify({
-      v: 2, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
+      v: 3, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
       updates, bestLen, net: online.serialize() }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
@@ -132,7 +144,7 @@ function saveBrain(manual) {
 function loadBrain() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
-    if (!d || d.v !== 2 || !d.net) return false;
+    if (!d || d.v !== 3 || !d.net) return false;
     online.load(d.net); target.copyFrom(online);
     Object.assign(params, d.params || {});
     episodes = d.episodes | 0; returns = d.returns || [];
