@@ -122,3 +122,12 @@ function render(dt, t) {
     g.fillText('· SLOW-MO ·', L.w / 2, 58);
   }
 }
+function spawnMedal(x, y) {
+  if (particles.length > 240) return;
+  for (let i = 0; i < 50; i++) {
+    const an = Math.random() * Math.PI * 2, sp = 6 + Math.random() * 14;
+    particles.push({ x, y: y + 1, vx: Math.cos(an) * sp, vy: Math.abs(Math.sin(an)) * sp + 4,
+      life: 1 + Math.random() * .8, age: 0, size: 1.5 + Math.random() * 2.5,
+      col: ['#ffd166', '#fff6c9', '#ffb703', '#ffffff'][(Math.random() * 4) | 0], grav: -WORLD.g });
+  }
+}
