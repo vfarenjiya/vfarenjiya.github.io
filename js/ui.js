@@ -5,7 +5,7 @@ function updateHud() {
   epVal.textContent = episodes;
   const e = mode === 'play' ? 0 : curEps();
   epsVal.textContent = e.toFixed(2);
-  epsVal.style.color = e > 0.3 ? 'var(--lava)' : 'var(--teal)';
+  epsVal.style.color = e > .3 ? 'var(--lava)' : 'var(--teal)';
   lastVal.textContent = returns.length ? returns[returns.length - 1] : '—';
   okVal.textContent = okHist.length
     ? Math.round(100 * okHist.filter(Boolean).length / okHist.length) + '%' : '—';
@@ -19,7 +19,7 @@ function updateHud() {
 /* ================= MAIN LOOP ================= */
 let lastT = performance.now();
 function frame(now) {
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
   if (running) {
     if (respawnT > 0) { respawnT -= dt; if (respawnT <= 0) beginEpisode(); }
     else {
@@ -30,23 +30,27 @@ function frame(now) {
   }
   render(dt, now / 1000);
   if (chartDirty) { drawChart(); chartDirty = false; }
-  hudT += dt; if (hudT > 0.12) { hudT = 0; updateHud(); }
+  hudT += dt; if (hudT > .12) { hudT = 0; updateHud(); }
   requestAnimationFrame(frame);
 }
 
-/* ================= UI WIRING ================= */
+/* ================= UI ================= */
 function toast(msg) {
   toastEl.textContent = msg; toastEl.classList.add('show');
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => toastEl.classList.remove('show'), 2200);
+  clearTimeout(toast._t); toast._t = setTimeout(() => toastEl.classList.remove('show'), 2200);
 }
 function setSeg(el, i) {
   el.querySelector('.thumb').style.transform = `translateX(${i * 100}%)`;
   [...el.querySelectorAll('button')].forEach((b, j) => b.classList.toggle('on', j === i));
 }
 function updateTransport() {
-  btnStart.textContent = running ? '⏸ PAUSE' : (mode === 'train' ? '▶ TRAIN' : '▶ PLAY');
+  btnStart.textContent = running ? '⏸' : '▶';
   btnStart.classList.toggle('running', running);
+}
+const sheet = $('#sheet'), scrim = $('#scrim');
+function openSheet(o) {
+  sheet.classList.toggle('open', o); scrim.classList.toggle('show', o);
+  if (o) chartDirty = true;
 }
 function setMode(m) {
   if (m === mode) return;
@@ -70,15 +74,16 @@ btnStart.addEventListener('click', () => {
   if (!running && mode === 'train') saveBrain(true);
   updateTransport();
 });
+$('#btnGear').addEventListener('click', () => openSheet(!sheet.classList.contains('open')));
+$('#handle').addEventListener('click', () => openSheet(false));
+scrim.addEventListener('click', () => openSheet(false));
 $('#btnReset').addEventListener('click', resetBrain);
-$('#btnFold').addEventListener('click', () => $('#panel').classList.toggle('collapsed'));
 $('#speed').addEventListener('input', e => {
   speedIdx = +e.target.value;
   $('#spdVal').textContent = SPEEDS[speedIdx] <= 30
     ? SPEEDS[speedIdx] + ' st/s' : 'TURBO ×' + SPEEDS[speedIdx];
 });
 
-// param sliders generated from config
 const SLIDERS = [
   ['alpha',    'α · LEARNING RATE',        0.05, 1,   0.01, v => v.toFixed(2)],
   ['gamma',    'γ · DISCOUNT',             0.80, 1,   0.01, v => v.toFixed(2)],
@@ -96,9 +101,7 @@ const SLIDERS = [
     grid.appendChild(d);
     const inp = d.querySelector('input'), out = d.querySelector('b');
     inp.value = params[key]; out.textContent = fmt(params[key]);
-    inp.addEventListener('input', () => {
-      params[key] = +inp.value; out.textContent = fmt(params[key]);
-    });
+    inp.addEventListener('input', () => { params[key] = +inp.value; out.textContent = fmt(params[key]); });
   }
 }
 for (const [id, key] of [['tglPol', 'pol'], ['tglHeat', 'heat'], ['tglTrail', 'trail']]) {
@@ -129,6 +132,13 @@ addEventListener('resize', checkOri);
 addEventListener('orientationchange', checkOri);
 addEventListener('pagehide', () => saveBrain());
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveBrain(); });
+
+/* splash */
+const splash = $('#splash');
+splash.addEventListener('pointerdown', () => {
+  splash.classList.add('gone'); S();
+  setTimeout(() => splash.remove(), 600);
+}, { once: true });
 
 /* ================= INIT ================= */
 const hadSave = loadBrain();
