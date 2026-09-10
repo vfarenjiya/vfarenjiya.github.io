@@ -5,129 +5,120 @@ function layout() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   cv.width = W * DPR; cv.height = H * DPR;
   const top = 66, bottom = 104;
-  const availH = Math.max(220, H - top - bottom);
-  L.s = Math.min(W / WORLD.w, availH / WORLD.h);
-  L.ox = (W - WORLD.w * L.s) / 2;
-  L.gy = top + Math.max(0, (availH - WORLD.h * L.s) / 2) + WORLD.h * L.s;
-  L.w = W; L.h = H; L.oy = L.gy - WORLD.h * L.s;
-  terrKey = '';                       // force terrain rebuild
-  if (!view.ready) { view.x = env.x; view.y = env.y; view.ready = true; }
+  const availH = Math.max(200, H - top - bottom);
+  L.cell = Math.min((W - 16) / GW, availH / GH);
+  L.ox = (W - L.cell * GW) / 2;
+  L.oy = top + Math.max(0, (availH - L.cell * GH) / 2);
+  L.w = W; L.h = H;
 }
 addEventListener('resize', layout);
 addEventListener('orientationchange', layout);
 
-/* ================= EFFECTS (world coords) ================= */
-let shake = 0, bannerT = 0, bannerTxt = '', bannerCol = '', bannerSub = '';
-function floater(x, y, txt, col) { floaters.push({ x, y, txt, col, age: 0 }); }
-function spawnCrash(x, y) {
-  shake = 1; bannerT = 1.5; bannerTxt = 'CRASH ✗'; bannerCol = '#ff5a4d';
-  bannerSub = 'every fireball updates the Q-table';
-  if (particles.length > 240) return;
-  for (let i = 0; i < 40; i++) {
-    const an = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 16;
-    particles.push({ x, y: y + 1, vx: Math.cos(an) * sp, vy: Math.abs(Math.sin(an)) * sp,
-      life: .6 + Math.random() * .9, age: 0, size: 1.5 + Math.random() * 3,
-      col: ['#fff6c9', '#ff7a2f', '#d8a53a', '#8b93a7'][(Math.random() * 4) | 0], grav: -WORLD.g });
-  }
-  particles.push({ x, y: y + 2, vx: 0, vy: 0, life: .18, age: 0, size: 40, col: '#ffffff', grav: 0, flash: true });
-}
-function spawnDust(x, y) {
-  shake = .35; bannerT = 1.5; bannerTxt = 'TOUCHDOWN ✓'; bannerCol = '#7dffa8';
-  bannerSub = 'textbook soft landing';
-  if (particles.length > 240) return;
-  for (let i = 0; i < 34; i++) {
-    const d = Math.random() < .5 ? -1 : 1, sp = 3 + Math.random() * 9;
-    particles.push({ x: x + d * Math.random() * 2, y: y + .3, vx: d * sp, vy: 1 + Math.random() * 3,
-      life: .8 + Math.random() * .8, age: 0, size: 1.5 + Math.random() * 2.5,
-      col: ['#b9bcc2', '#9aa0a8', '#82868d'][(Math.random() * 3) | 0], grav: -WORLD.g });
+function burst(cx, cy, col) {
+  if (particles.length > 200) return;
+  const px = L.ox + (cx + .5) * L.cell, py = L.oy + (cy + .5) * L.cell;
+  for (let i = 0; i < 18; i++) {
+    const an = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 120;
+    particles.push({ x: px, y: py, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp,
+      life: .4 + Math.random() * .4, age: 0, size: 1.5 + Math.random() * 2.5, col, grav: 60 });
   }
 }
-const STARS = Array.from({ length: 150 }, () => ({
-  x: Math.random(), y: Math.random() * .75, s: .4 + Math.random() * 1.3,
-  a: .25 + Math.random() * .7, ph: Math.random() * 6 }));
-const ROCKS = Array.from({ length: 9 }, (_, i) => ({
-  x: 3 + hash(i, 11) * 94, r: .8 + hash(i, 5) * 2.2 }));
-const CRATERS = Array.from({ length: 5 }, (_, i) => ({
-  x: 5 + hash(i, 21) * 90, r: 3 + hash(i, 17) * 6 }));
+const STARS = Array.from({ length: 90 }, () => ({
+  x: Math.random(), y: Math.random(), s: .4 + Math.random() * 1.2,
+  a: .2 + Math.random() * .6, ph: Math.random() * 6 }));
 
-/* ================= MAIN RENDER ================= */
 function render(dt, t) {
   const g = cv.getContext('2d');
   g.setTransform(DPR, 0, 0, DPR, 0, 0);
   g.clearRect(0, 0, L.w, L.h);
-  if (shake > 0) {
-    shake = Math.max(0, shake - dt * 1.6);
-    g.translate((Math.random() - .5) * 10 * shake, (Math.random() - .5) * 10 * shake);
+  g.fillStyle = '#04060c'; g.fillRect(0, 0, L.w, L.h);
+  for (const s of STARS) {
+    g.globalAlpha = s.a * (.8 + .2 * Math.sin(t * 1.2 + s.ph));
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(s.x * L.w, s.y * L.h, s.s, 0, 7); g.fill();
   }
-  drawSpace(g, t, dt);
-  drawTerrain(g, t);
-  drawOverlays(g);
-  const s = L.s;
-  // engine glow on regolith
-  if (view.thrust > .25) {
-    const px = sx(view.x), py = sy(view.y);
-    const lg = g.createRadialGradient(px, py + s * 2, 1, px, py + s * 2, s * 16);
-    lg.addColorStop(0, `rgba(190,220,255,${.22 * view.thrust})`);
-    lg.addColorStop(1, 'rgba(190,220,255,0)');
-    g.fillStyle = lg; g.fillRect(px - s * 16, py - s * 6, s * 32, s * 24);
+  g.globalAlpha = 1;
+  const cs = L.cell;
+  // board frame + grid
+  g.strokeStyle = 'rgba(53,224,200,.35)'; g.lineWidth = 2;
+  g.strokeRect(L.ox - 3, L.oy - 3, cs * GW + 6, cs * GH + 6);
+  if (flags.grid) {
+    g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1;
+    for (let x = 1; x < GW; x++) { g.beginPath(); g.moveTo(L.ox + x * cs, L.oy); g.lineTo(L.ox + x * cs, L.oy + GH * cs); g.stroke(); }
+    for (let y = 1; y < GH; y++) { g.beginPath(); g.moveTo(L.ox, L.oy + y * cs); g.lineTo(L.ox + GW * cs, L.oy + y * cs); g.stroke(); }
   }
-  // ground shadow
-  if (!agentHidden) {
-    const gh = groundH(view.x), alt = Math.max(0, view.y - gh);
-    const k = clamp(1 - alt / 130, .12, 1);
-    g.fillStyle = `rgba(0,0,0,${.35 * k})`;
-    g.beginPath(); g.ellipse(sx(view.x), sy(gh) + 2, s * 2.4 * k, s * .5 * k, 0, 0, 7); g.fill();
+  // food orb
+  { const fx = L.ox + (env.food.x + .5) * cs, fy = L.oy + (env.food.y + .5) * cs;
+    const pu = 1 + .18 * Math.sin(t * 5);
+    g.save(); g.shadowColor = '#ffd166'; g.shadowBlur = cs * .8;
+    const fg = g.createRadialGradient(fx, fy, 1, fx, fy, cs * .38 * pu);
+    fg.addColorStop(0, '#fff6c9'); fg.addColorStop(1, '#ffb703');
+    g.fillStyle = fg; g.beginPath(); g.arc(fx, fy, cs * .3 * pu, 0, 7); g.fill(); g.restore(); }
+  // snake (interpolated)
+  const sps = curSps();
+  const frac = sps <= 30 ? Math.min(1, (performance.now() - env.stepAt) / (1000 / sps)) : 1;
+  const pos = i => {
+    const c = env.snake[i], p = env.prev[Math.min(i, env.prev.length - 1)] || c;
+    return { x: p.x + (c.x - p.x) * frac, y: p.y + (c.y - p.y) * frac };
+  };
+  if (flags.glow) { g.save(); g.shadowColor = '#35e0c8'; g.shadowBlur = cs * .6; }
+  for (let i = env.snake.length - 1; i >= 0; i--) {
+    const p = pos(i);
+    const px = L.ox + (p.x + .5) * cs, py = L.oy + (p.y + .5) * cs;
+    const k = 1 - i / Math.max(8, env.snake.length);
+    g.fillStyle = i === 0 ? '#8ff5e2' : `rgb(${(20 + 30 * k) | 0},${(150 + 80 * k) | 0},${(140 + 60 * k) | 0})`;
+    const r = cs * (i === 0 ? .42 : .36);
+    g.beginPath(); g.arc(px, py, r, 0, 7); g.fill();
+    if (i === 0) {                       // eyes look toward dir
+      const d = DIRS[env.dir];
+      g.fillStyle = '#04211d';
+      for (const s2 of [-1, 1]) {
+        g.beginPath();
+        g.arc(px + d[0] * r * .35 - d[1] * s2 * r * .35, py + d[1] * r * .35 + d[0] * s2 * r * .35, r * .16, 0, 7);
+        g.fill();
+      }
+    }
   }
-  if (flags.trail) { const n = trail.length;
-    for (let i = 0; i < n; i++) {
-      g.fillStyle = `rgba(255,170,80,${(i / n) * .35})`;
-      g.beginPath(); g.arc(sx(trail[i].x), sy(trail[i].y), 1 + (i / n) * 2, 0, 7); g.fill(); } }
-  const rate = curSps() <= 30 ? 9 : 40, k = 1 - Math.exp(-dt * rate);
-  view.x += (env.x - view.x) * k; view.y += (env.y - view.y) * k;
-  const tT = clamp(env.lat * .14 + env.vx * .03, -.35, .35);
-  view.tilt += (tT - view.tilt) * (1 - Math.exp(-dt * 10));
-  view.thrust += ((env.mainOn ? 1 : 0) - view.thrust) * (1 - Math.exp(-dt * 14));
-  if (!agentHidden)
-    drawLM(g, sx(view.x), sy(view.y), s, view.tilt, view.thrust > .4, env.lat, t);
+  if (flags.glow) g.restore();
+  // particles
   for (let i = particles.length - 1; i >= 0; i--) { const q = particles[i]; q.age += dt;
     if (q.age >= q.life) { particles.splice(i, 1); continue; }
     q.vy += q.grav * dt; q.x += q.vx * dt; q.y += q.vy * dt;
     g.globalAlpha = 1 - q.age / q.life; g.fillStyle = q.col;
-    if (q.flash) g.fillRect(0, 0, L.w, L.h);
-    else { g.beginPath(); g.arc(sx(q.x), sy(q.y), q.size, 0, 7); g.fill(); } }
+    g.beginPath(); g.arc(q.x, q.y, q.size, 0, 7); g.fill(); }
   g.globalAlpha = 1;
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.font = `700 ${Math.max(12, s * 4)}px "Space Grotesk"`;
-  for (let i = floaters.length - 1; i >= 0; i--) { const f = floaters[i]; f.age += dt;
-    if (f.age > 1.1) { floaters.splice(i, 1); continue; }
-    g.globalAlpha = 1 - f.age / 1.1; g.fillStyle = f.col;
-    g.fillText(f.txt, sx(f.x), sy(f.y) - f.age * 40); }
-  g.globalAlpha = 1;
-  // result banner
-  if (bannerT > 0) {
-    bannerT -= dt;
-    const a = clamp(Math.min((1.5 - bannerT) * 4, bannerT * 1.6), 0, 1);
-    g.globalAlpha = a;
-    g.font = `${s * 6.5}px Bungee`; g.fillStyle = bannerCol;
-    g.fillText(bannerTxt, L.w / 2, L.h * .38);
-    g.font = `600 ${Math.max(11, s * 2.6)}px "Space Grotesk"`;
-    g.fillStyle = 'rgba(255,255,255,.85)';
-    g.fillText(bannerSub, L.w / 2, L.h * .38 + s * 6);
-    g.globalAlpha = 1;
-  }
-  drawTape(g);
-  if (typeof timeScale !== 'undefined' && timeScale < 1) {
-    g.font = `10px Bungee`; g.fillStyle = 'rgba(53,224,200,.9)';
-    g.textAlign = 'center';
-    g.fillText('· SLOW-MO ·', L.w / 2, 58);
-  }
 }
-function spawnMedal(x, y) {
-  if (particles.length > 240) return;
-  for (let i = 0; i < 50; i++) {
-    const an = Math.random() * Math.PI * 2, sp = 6 + Math.random() * 14;
-    particles.push({ x, y: y + 1, vx: Math.cos(an) * sp, vy: Math.abs(Math.sin(an)) * sp + 4,
-      life: 1 + Math.random() * .8, age: 0, size: 1.5 + Math.random() * 2.5,
-      col: ['#ffd166', '#fff6c9', '#ffb703', '#ffffff'][(Math.random() * 4) | 0], grav: -WORLD.g });
+
+/* ================= CHART (dynamic axis) ================= */
+function drawChart() {
+  const W = chartCv.clientWidth, H = chartCv.clientHeight;
+  if (!W) return;
+  chartCv.width = W * DPR; chartCv.height = H * DPR;
+  const g = chartCv.getContext('2d');
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const pl = 26, pr = 6, pt = 6, pb = 4;
+  const N = Math.min(returns.length, 400);
+  let mn = -12, mx = 20;
+  for (let i = Math.max(0, returns.length - N); i < returns.length; i++) {
+    if (returns[i] < mn) mn = returns[i]; if (returns[i] > mx) mx = returns[i];
   }
+  mn -= 3; mx += 6;
+  const y = v => pt + (1 - (v - mn) / (mx - mn)) * (H - pt - pb);
+  g.font = '500 8.5px "Space Grotesk"'; g.textBaseline = 'middle'; g.textAlign = 'right';
+  for (const gv of [mn + 3, 0, mx - 6]) {
+    g.strokeStyle = '#1c2740'; g.beginPath(); g.moveTo(pl, y(gv)); g.lineTo(W - pr, y(gv)); g.stroke();
+    g.fillStyle = '#5c7196'; g.fillText(Math.round(gv), pl - 4, y(gv));
+  }
+  if (N < 2) {
+    g.fillStyle = '#5c7196'; g.textAlign = 'center'; g.font = '500 10px "Space Grotesk"';
+    g.fillText('no episodes yet — press ▶', W / 2, H / 2); return;
+  }
+  const data = returns.slice(-N), x = i => pl + i / (N - 1) * (W - pl - pr);
+  g.strokeStyle = 'rgba(140,160,200,.4)'; g.lineWidth = 1; g.beginPath();
+  data.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v)));
+  g.stroke();
+  const pre = [0]; for (const v of data) pre.push(pre[pre.length - 1] + v);
+  g.strokeStyle = '#ff7a2f'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(x(0), y(data[0]));
+  for (let i = 1; i < N; i++) { const w = Math.min(i + 1, 30);
+    g.lineTo(x(i), y((pre[i + 1] - pre[i + 1 - w]) / w)); }
+  g.stroke();
 }
