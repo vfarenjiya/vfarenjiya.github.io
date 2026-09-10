@@ -1,9 +1,7 @@
 'use strict';
-/* world(m) → screen(px) */
 const sx = x => L.ox + x * L.s;
 const sy = y => L.gy - y * L.s;
 
-/* ================= HELPERS (before any use) ================= */
 const hash = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function rr(g, x, y, w, h, r) {
@@ -45,7 +43,6 @@ function drawSpace(g, t, dt) {
       g.lineTo(shoot.x - shoot.vx * .12, shoot.y - shoot.vy * .12); g.stroke();
     }
   }
-  // Earth
   const ex = L.w * .18, ey = L.h * .10, er = Math.min(L.w, L.h) * .055;
   g.save(); g.shadowColor = 'rgba(120,180,255,.55)'; g.shadowBlur = er;
   const eg = g.createRadialGradient(ex - er * .3, ey - er * .3, er * .1, ex, ey, er);
@@ -54,14 +51,12 @@ function drawSpace(g, t, dt) {
   g.fillStyle = 'rgba(255,255,255,.5)';
   g.beginPath(); g.ellipse(ex - er * .2, ey - er * .1, er * .5, er * .18, -.4, 0, 7); g.fill();
   g.beginPath(); g.ellipse(ex + er * .25, ey + er * .3, er * .35, er * .14, .3, 0, 7); g.fill();
-  // Sun
   const snx = L.w * .86, sny = L.h * .07;
   g.save(); g.shadowColor = '#fff'; g.shadowBlur = 26;
   g.fillStyle = '#fff'; g.beginPath(); g.arc(snx, sny, 9, 0, 7); g.fill(); g.restore();
   g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1;
   g.beginPath(); g.moveTo(snx - 34, sny); g.lineTo(snx + 34, sny);
   g.moveTo(snx, sny - 22); g.lineTo(snx, sny + 22); g.stroke();
-  // parallax mountain ridge
   const shift = -(view.x - 50) * .12 * L.s;
   g.fillStyle = '#0d1119';
   g.beginPath(); g.moveTo(-60, L.gy);
@@ -70,10 +65,10 @@ function drawSpace(g, t, dt) {
   g.lineTo(L.w + 60, L.gy); g.closePath(); g.fill();
 }
 
-/* ================= TERRAIN (pre-rendered offscreen) ================= */
+/* ================= TERRAIN (offscreen) ================= */
 let terr = null, terrKey = '';
 function ensureTerrain() {
-  const key = `${L.w}x${L.h}x${DPR}x${L.s.toFixed(3)}`;
+  const key = `${L.w}x${L.h}x${DPR}x${L.s.toFixed(3)}x${WORLD.padX0}x${WORLD.padX1}`;
   if (terr && terrKey === key) return;
   terrKey = key;
   terr = document.createElement('canvas');
@@ -121,11 +116,11 @@ function drawTerrain(g, t) {
   ensureTerrain();
   g.drawImage(terr, 0, 0, L.w, L.h);
   const s = L.s, py = sy(0);
-  for (const bx of [sx(WORLD.padX0), sx(WORLD.padX1)]) {   // blinking beacons
+  for (const bx of [sx(WORLD.padX0), sx(WORLD.padX1)]) {
     g.fillStyle = (t % 1) < .5 ? '#ffb703' : 'rgba(255,183,3,.25)';
     g.beginPath(); g.arc(bx, py - s * 2.5, 3, 0, 7); g.fill();
   }
-  const chase = (t * 3 | 0) % 4;                            // approach lights
+  const chase = (t * 3 | 0) % 4;
   for (let i = 0; i < 4; i++) {
     const lx = WORLD.padX0 - 8 - i * 7; if (lx < 2) continue;
     const on = chase === (3 - i);
@@ -137,7 +132,7 @@ function drawTerrain(g, t) {
   }
 }
 
-/* ================= APOLLO-STYLE LM ================= */
+/* ================= LM ================= */
 function drawLM(g, px, py, s, tilt, mainOn, lat, t) {
   if (mainOn) {
     const len = (9 + 2.5 * Math.sin(t * 42)) * s;
@@ -202,7 +197,7 @@ function drawLM(g, px, py, s, tilt, mainOn, lat, t) {
   g.restore();
 }
 
-/* ================= OVERLAYS (policy / value) ================= */
+/* ================= OVERLAYS ================= */
 function drawActionGlyph(g, x, y, a, col, k) {
   g.strokeStyle = col; g.lineWidth = 2; g.lineCap = 'round';
   if (a === 0 || a === 1) { const d = a === 0 ? -1 : 1;
@@ -211,6 +206,14 @@ function drawActionGlyph(g, x, y, a, col, k) {
   else { g.beginPath(); g.arc(x, y, k * .35, 0, 7); g.stroke(); }
 }
 function drawOverlays(g) {
+  if (flags.buck) {                       // the discretization the brain actually sees
+    g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1;
+    for (const bx of XB) { g.beginPath(); g.moveTo(sx(bx), sy(171)); g.lineTo(sx(bx), sy(0)); g.stroke(); }
+    for (const by of YB) { g.beginPath(); g.moveTo(sx(0), sy(by)); g.lineTo(sx(100), sy(by)); g.stroke(); }
+    const bx = bucket(env.x, XB), by = bucket(env.y, YB);
+    g.strokeStyle = 'rgba(53,224,200,.8)'; g.lineWidth = 1.5;
+    g.strokeRect(sx(XB[bx]) + 1, sy(YB[by + 1]) + 1, (XB[bx + 1] - XB[bx]) * L.s - 2, (YB[by + 1] - YB[by]) * L.s - 2);
+  }
   if (!flags.heat && !flags.pol) return;
   let lo = Infinity, hi = -Infinity; const V = [];
   for (let bx = 0; bx < 6; bx++) for (let by = 0; by < 8; by++) {
@@ -241,7 +244,7 @@ function drawOverlays(g) {
   }
 }
 
-/* ================= ALTITUDE TAPE ================= */
+/* ================= ALTITUDE TAPE + PROFILE BUG ================= */
 function drawTape(g) {
   const x = L.w - 16, y0 = sy(WORLD.h), y1 = sy(0);
   g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 1;
@@ -253,9 +256,20 @@ function drawTape(g) {
     g.beginPath(); g.moveTo(x - 4, yy); g.lineTo(x, yy); g.stroke();
     g.fillText(m, x - 6, yy);
   }
+  // reference descent profile: horizontal offset = target sink rate
+  g.strokeStyle = 'rgba(255,170,80,.55)'; g.lineWidth = 1.5;
+  g.beginPath();
+  for (let m = 0; m <= 160; m += 8) {
+    const px = x - 4 - (-desiredVy(m) / 8) * 12, yy = sy(m);
+    m === 0 ? g.moveTo(px, yy) : g.lineTo(px, yy);
+  }
+  g.stroke();
   const my = sy(clamp(view.y, 0, WORLD.h));
   g.fillStyle = '#35e0c8';
   g.beginPath(); g.moveTo(x - 5, my); g.lineTo(x + 3, my - 4); g.lineTo(x + 3, my + 4); g.closePath(); g.fill();
+  const onProf = Math.abs(env.vy - desiredVy(env.y)) < 1.2;
+  g.fillStyle = onProf ? '#7dffa8' : '#ffb703';
+  g.beginPath(); g.arc(x - 4 - (clamp(-env.vy, 0, 8) / 8) * 12, my, 3, 0, 7); g.fill();
 }
 
 /* ================= CHART ================= */
