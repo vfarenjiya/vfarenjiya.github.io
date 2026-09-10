@@ -48,7 +48,7 @@ let playRuns = 0, playLast = '—';
 const SPEEDS = [1, 2, 4, 8, 15, 30, 60, 150, 400, 1200];
 let speedIdx = 4;
 const curSps = () => mode === 'play' ? 5 : SPEEDS[speedIdx];
-const flags = { pol: true, heat: false, trail: true };
+const flags = { pol: false, heat: false, trail: true };
 let soundOn = false, particles = [], floaters = [], chartDirty = true;
 
 /* ================= DOM REFS ================= */
