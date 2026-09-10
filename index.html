@@ -1,130 +1,80 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#1a1a2e" />
-  <title>Cliff Walking RL</title>
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="stylesheet" href="./styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="./styles.css">
+<title>Cliff Walking RL</title>
 </head>
 <body>
-  <main class="app">
-    <header class="panel">
-      <h1>🧗 CLIFF WALKING RL</h1>
-      <div id="offlineBadge" class="offline" hidden>Offline</div>
+<main class="app">
+  <header>
+    <h1>🧗 CLIFF WALKING RL</h1>
+    <div id="offlineBadge" class="offline" hidden>Offline</div>
+    <nav class="tabs" aria-label="Algorithm">
+      <button id="tab-q" type="button" class="tab active" data-mode="q">Q-Learning</button>
+      <button id="tab-sarsa" type="button" class="tab" data-mode="sarsa">SARSA</button>
+      <button id="tab-both" type="button" class="tab" data-mode="both">Both</button>
+    </nav>
+  </header>
 
-      <nav class="tabs" aria-label="Algorithm tabs">
-        <button class="tab active" data-mode="q" id="tab-q">Q-Learning</button>
-        <button class="tab" data-mode="sarsa" id="tab-sarsa">SARSA</button>
-        <button class="tab" data-mode="both" id="tab-both">Both</button>
-      </nav>
-    </header>
+  <section class="panel"><canvas id="heatmap" aria-label="Cliff grid heatmap"></canvas></section>
+  <section class="panel"><canvas id="chart" aria-label="Episode returns"></canvas></section>
 
-    <section class="panel">
-      <canvas id="heatmap" aria-label="Cliff Walking heatmap"></canvas>
-    </section>
+  <section class="panel controls">
+    <div class="button-row">
+      <button id="trainBtn" type="button">▶ Train</button>
+      <button id="stopBtn" type="button" disabled>⏹ Stop</button>
+      <button id="resetBtn" type="button">↺ Reset</button>
+    </div>
+    <div class="episode-row" role="group" aria-label="Episodes">
+      <button type="button" class="episodes-btn" data-episodes="100">100</button>
+      <button type="button" class="episodes-btn active" data-episodes="500">500</button>
+      <button type="button" class="episodes-btn" data-episodes="2000">2000</button>
+    </div>
+    <label class="slider"><span id="speedLabel">Speed 0/turbo</span><input id="watchSpeed" type="range" min="0" max="10" step="1" value="0"></label>
+    <label class="slider"><span id="alphaLabel">α 0.20</span><input id="alpha" type="range" min="0.05" max="0.5" step="0.01" value="0.2"></label>
+    <label class="slider"><span id="gammaLabel">γ 0.99</span><input id="gamma" type="range" min="0.90" max="1.00" step="0.01" value="0.99"></label>
+    <div class="toggle-row">
+      <label class="toggle"><input type="checkbox" id="toggleHeatmap" checked> Heatmap</label>
+      <label class="toggle"><input type="checkbox" id="toggleArrows" checked> Arrows</label>
+    </div>
+  </section>
 
-    <section class="panel">
-      <canvas id="chart" aria-label="Episode return chart"></canvas>
-    </section>
+  <section class="panel playback">
+    <div class="button-row">
+      <button id="pbFirst" type="button" aria-label="First">⏮</button>
+      <button id="pbBack" type="button" aria-label="Step back">◀</button>
+      <button id="pbPlay" type="button" aria-label="Play or pause">▶</button>
+      <button id="pbForward" type="button" aria-label="Step forward">⏭</button>
+    </div>
+    <label class="slider"><span id="pbSpeedLabel">Playback 5/s</span><input id="pbSpeed" type="range" min="1" max="10" step="1" value="5"></label>
+    <div id="qPanel" class="qpanel" aria-label="Q values">
+      <div class="qrow"><span class="qlabel">UP</span><div class="qtrack"><div id="qbar-0" class="qbar"></div></div><span id="qval-0" class="qval"></span></div>
+      <div class="qrow"><span class="qlabel">DN</span><div class="qtrack"><div id="qbar-1" class="qbar"></div></div><span id="qval-1" class="qval"></span></div>
+      <div class="qrow"><span class="qlabel">LF</span><div class="qtrack"><div id="qbar-2" class="qbar"></div></div><span id="qval-2" class="qval"></span></div>
+      <div class="qrow"><span class="qlabel">RT</span><div class="qtrack"><div id="qbar-3" class="qbar"></div></div><span id="qval-3" class="qval"></span></div>
+    </div>
+  </section>
 
-    <section class="panel controls">
-      <div class="button-row">
-        <button id="trainBtn">▶ Train</button>
-        <button id="stopBtn" disabled>⏹ Stop</button>
-        <button id="resetBtn">↺ Reset</button>
-      </div>
+  <section class="panel stats">
+    <div>Episode: <span id="statEpisode">0</span></div>
+    <div>ε: <span id="statEpsilon">1.000</span></div>
+    <div>Avg return: <span id="statAvg">—</span></div>
+  </section>
 
-      <div class="episode-row" role="group" aria-label="Episode count">
-        <button class="episodes-btn" data-episodes="100">100</button>
-        <button class="episodes-btn active" data-episodes="500">500</button>
-        <button class="episodes-btn" data-episodes="2000">2000</button>
-      </div>
+  <button id="installBtn" type="button" class="install" hidden>Install app</button>
+</main>
 
-      <label class="slider">
-        <span id="speedLabel">Speed 0/turbo</span>
-        <input id="watchSpeed" type="range" min="0" max="10" step="1" value="0" />
-      </label>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-      <label class="slider">
-        <span id="alphaLabel">α 0.20</span>
-        <input id="alpha" type="range" min="0.05" max="0.5" step="0.01" value="0.2" />
-      </label>
-
-      <label class="slider">
-        <span id="gammaLabel">γ 0.99</span>
-        <input id="gamma" type="range" min="0.90" max="1.00" step="0.01" value="0.99" />
-      </label>
-
-      <div class="toggle-row">
-        <label class="toggle">
-          <input type="checkbox" id="toggleHeatmap" checked />
-          Heatmap
-        </label>
-        <label class="toggle">
-          <input type="checkbox" id="toggleArrows" checked />
-          Arrows
-        </label>
-      </div>
-    </section>
-
-    <section class="panel playback">
-      <div class="button-row">
-        <button id="pbFirst" aria-label="First step">⏮</button>
-        <button id="pbBack" aria-label="Step back">◀</button>
-        <button id="pbPlay" aria-label="Play or pause">▶</button>
-        <button id="pbForward" aria-label="Step forward">⏭</button>
-      </div>
-
-      <label class="slider">
-        <span id="pbSpeedLabel">Playback 5/s</span>
-        <input id="pbSpeed" type="range" min="1" max="10" step="1" value="5" />
-      </label>
-
-      <div id="qPanel" class="qpanel" aria-label="Q values">
-        <div class="qrow">
-          <span class="qlabel">UP</span>
-          <div class="qtrack"><div id="qbar-0" class="qbar"></div></div>
-          <span id="qval-0" class="qval">0.00</span>
-        </div>
-
-        <div class="qrow">
-          <span class="qlabel">DOWN</span>
-          <div class="qtrack"><div id="qbar-1" class="qbar"></div></div>
-          <span id="qval-1" class="qval">0.00</span>
-        </div>
-
-        <div class="qrow">
-          <span class="qlabel">LEFT</span>
-          <div class="qtrack"><div id="qbar-2" class="qbar"></div></div>
-          <span id="qval-2" class="qval">0.00</span>
-        </div>
-
-        <div class="qrow">
-          <span class="qlabel">RIGHT</span>
-          <div class="qtrack"><div id="qbar-3" class="qbar"></div></div>
-          <span id="qval-3" class="qval">0.00</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel stats" aria-label="Statistics">
-      <div>episode: <span id="statEpisode">0</span></div>
-      <div>ε: <span id="statEpsilon">1.000</span></div>
-      <div>avg return: <span id="statAvg">—</span></div>
-    </section>
-
-    <button id="installBtn" class="install" hidden>Install app</button>
-  </main>
-
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-
-  <script src="./env.js"></script>
-  <script src="./agent.js"></script>
-  <script src="./renderer.js"></script>
-  <script src="./chart.js"></script>
-  <script src="./playback.js"></script>
-  <script src="./app.js"></script>
+<script src="./env.js"></script>
+<script src="./agent.js"></script>
+<script src="./renderer.js"></script>
+<script src="./chart.js"></script>
+<script src="./playback.js"></script>
+<script src="./app.js"></script>
 </body>
 </html>
