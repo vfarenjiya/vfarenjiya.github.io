@@ -1,4 +1,4 @@
-const VERSION = 'cliff-walker-v3';
+const VERSION = 'cliff-walker-v4';
 const FONTS = 'cliff-walker-fonts-v1';
 const CORE = [
   './', './index.html', './style.css',
