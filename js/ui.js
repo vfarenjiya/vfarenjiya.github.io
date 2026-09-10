@@ -6,7 +6,7 @@ function updateHud() {
   epsVal.textContent = e.toFixed(2);
   epsVal.style.color = e > .3 ? 'var(--lava)' : 'var(--teal)';
   lastVal.textContent = returns.length ? Math.round(returns[returns.length - 1]) : '—';
-  bestVal.textContent = bestAvg == null ? 'BEST —' : 'BEST ' + bestAvg.toFixed(0);
+  bestVal.textContent = bestAvg == null ? '—' : bestAvg.toFixed(0);   // value only; label already says BEST
   lenVal.textContent = env.snake.length;
   foodVal.textContent = env.foods;
   stepVal.textContent = env.steps;
@@ -20,7 +20,7 @@ function updateHud() {
 function brainInfo() {
   const el = $('#brainInfo'); if (!el) return;
   el.textContent =
-    'DQN  648→80→40→3 · ~55k params · replay ' + repLen + '/' + REPLAY + '\n' +
+    'DQN  864→80→40→3 · egocentric frame · replay ' + repLen + '/' + REPLAY + '\n' +
     'updates ' + updates + ' · TD-loss ' + lastLoss.toFixed(3) + ' · best len ' + bestLen + '\n' +
     'ε     ' + curEps().toFixed(3) + '  =  ' + params.epsEnd + ' + ' + params.epsStart + '·e^(−ep/' + params.halfLife + ')\n' +
     'Q(s,a) ← Q + α_adam·[ r + γ·max Q_target(s′,·) − Q ]   γ=' + params.gamma;
@@ -39,7 +39,7 @@ function frame(now) {
         doStep(mode === 'play');
         if (mode === 'train' && repLen > WARM) {
           trainFromReplay();
-          if (speedIdx >= 8) trainFromReplay();   // double updates at TURBO
+          if (speedIdx >= 8) trainFromReplay();
         }
         if (respawnT > 0) break;
       }
