@@ -1,12 +1,11 @@
 'use strict';
-const S_BUF = new Uint8Array(REPLAY * IN), S2_BUF = new Uint8Array(REPLAY * IN);
+const S_BUF = new Float32Array(REPLAY * IN), S2_BUF = new Float32Array(REPLAY * IN);
 const A_BUF = new Uint8Array(REPLAY), R_BUF = new Float32Array(REPLAY), D_BUF = new Uint8Array(REPLAY);
 let repLen = 0, repHead = 0;
 const tmpF = new Float32Array(IN);
 const S_TMP = new Float32Array(IN), S2_TMP = new Float32Array(IN);
 const tmpGrid = new Uint8Array(CELLS);
 const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-const phi = () => -PHI_K * manhattan(env.snake[0], env.food);
 
 /* 12 egocentric features:
    0-2  immediate block: straight / left / right
@@ -14,8 +13,6 @@ const phi = () => -PHI_K * manhattan(env.snake[0], env.food);
    6-7  signed food direction in head frame: forward / right
    8    manhattan distance to food (norm)
    9-11 free runway to wall: forward / right / left (norm) */
-
-
 function encode(out, sn, food) {
   out.fill(0); tmpGrid.fill(0);
   for (let i = 0; i < sn.length; i++) tmpGrid[sn[i].y * GW + sn[i].x] = 1;
@@ -45,8 +42,6 @@ function encode(out, sn, food) {
   out[10] = ray(r0, r1, 12) / 12;
   out[11] = ray(l0, l1, 12) / 12;
 }
-
-
 function placeFood() {
   do { env.food = { x: (Math.random() * GW) | 0, y: (Math.random() * GH) | 0 }; }
   while (env.snake.some(s => s.x === env.food.x && s.y === env.food.y));
@@ -68,7 +63,7 @@ function stepEnv(greedy) {
   env.dir = nd;
   const h = env.snake[0];
   const nh = { x: h.x + DIRS[nd][0], y: h.y + DIRS[nd][1] };
-  const p0 = phi();
+  const dPrev = manhattan(h, env.food);     // distance BEFORE this move
   let reward = 0, done = false;
   const wall = nh.x < 0 || nh.x >= GW || nh.y < 0 || nh.y >= GH;
   const self = env.snake.some((p, i) => i < env.snake.length - 1 && p.x === nh.x && p.y === nh.y);
@@ -86,7 +81,9 @@ function stepEnv(greedy) {
       placeFood();
     } else { env.snake.pop(); env.noEat++; }
     if (env.noEat > NO_EAT_LIMIT) { done = true; reward += R_TIMEOUT; }
-    if (!done) reward += params.gamma * phi() - p0;
+    // dense, non-telescoping reward: +0.4 per cell closer to food, -0.4 per cell farther
+    const dNow = manhattan(env.snake[0], env.food);
+    reward += (dPrev - dNow) * 0.4;
   }
   env.steps++; env.ret += reward; env.done = done; env.stepAt = performance.now();
   const s2 = S2_TMP; encode(s2, env.snake, env.food);
@@ -154,11 +151,11 @@ function endEpisode(greedy) {
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-const KEY = 'snake-dqn-v5';
+const KEY = 'snake-dqn-v6';
 function saveBrain(manual) {
   try {
     localStorage.setItem(KEY, JSON.stringify({
-      v: 5, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
+      v: 6, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
       updates, bestLen, net: online.serialize() }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
@@ -166,7 +163,7 @@ function saveBrain(manual) {
 function loadBrain() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
-    if (!d || d.v !== 5 || !d.net) return false;
+    if (!d || d.v !== 6 || !d.net) return false;
     online.load(d.net); target.copyFrom(online);
     Object.assign(params, d.params || {});
     episodes = d.episodes | 0; returns = d.returns || [];
