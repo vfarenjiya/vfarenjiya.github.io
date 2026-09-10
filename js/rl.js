@@ -14,6 +14,8 @@ const phi = () => -PHI_K * manhattan(env.snake[0], env.food);
    6-7  signed food direction in head frame: forward / right
    8    manhattan distance to food (norm)
    9-11 free runway to wall: forward / right / left (norm) */
+
+
 function encode(out, sn, food) {
   out.fill(0); tmpGrid.fill(0);
   for (let i = 0; i < sn.length; i++) tmpGrid[sn[i].y * GW + sn[i].x] = 1;
@@ -37,12 +39,14 @@ function encode(out, sn, food) {
   out[5] = ray(r0, r1, 3) < 3 ? 1 : 0;
   const dfx = food.x - h.x, dfy = food.y - h.y;
   out[6] = Math.max(-1, Math.min(1, (dfx * f[0] + dfy * f[1]) / 20));
-  out[7] = Math.max(-1, Math.min(1, (dfx * r0 + dfy * r1]) / 20));
+  out[7] = Math.max(-1, Math.min(1, (dfx * r0 + dfy * r1) / 20));
   out[8] = manhattan(h, food) / 30;
   out[9] = ray(f[0], f[1], 18) / 18;
   out[10] = ray(r0, r1, 12) / 12;
   out[11] = ray(l0, l1, 12) / 12;
 }
+
+
 function placeFood() {
   do { env.food = { x: (Math.random() * GW) | 0, y: (Math.random() * GH) | 0 }; }
   while (env.snake.some(s => s.x === env.food.x && s.y === env.food.y));
