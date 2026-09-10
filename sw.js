@@ -1,69 +1,36 @@
-const CACHE   = 'gate-quest-ig-v9';
-const RUNTIME = 'gate-quest-runtime-v9';
-
-const PRECACHE = [
-  './', './index.html', './insta.css', './data.js', './app.js',
-  './mock.js', './feed.js', './manifest.json', './icon.svg'
+const CACHE = 'snake-rl-v2';
+const ASSETS = [
+    './', './index.html', './snake-game.js', './q-learning.js',
+    './app.js', './train-worker.js', './manifest.json',
+    './icons/icon-192x192.png', './icons/icon-512x512.png'
 ];
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE)
-      .then(c => Promise.allSettled(PRECACHE.map(u => c.add(u))))
-      .then(() => self.skipWaiting())
-  );
+self.addEventListener('install', (e) => {
+    e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+    self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys()
-      .then(ks => Promise.all(
-        ks.filter(k => k !== CACHE && k !== RUNTIME).map(k => caches.delete(k))
-      ))
-      .then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener('fetch', e => {
-  const { request } = e;
-  if (request.method !== 'GET') return;
-  const url = new URL(request.url);
-
-  // 1) Navigation → network-first, offline fallback
-  if (request.mode === 'navigate') {
-    e.respondWith(
-      fetch(request)
-        .then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put('./index.html', cp)); return res; })
-        .catch(() => caches.match('./index.html'))
+self.addEventListener('activate', (e) => {
+    e.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+        )
     );
-    return;
-  }
+    self.clients.claim();
+});
 
-  // 2) CDN (KaTeX + webfonts) → stale-while-revalidate
-  const cdn = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
-  if (cdn.includes(url.origin)) {
+self.addEventListener('fetch', (e) => {
+    if (e.request.method !== 'GET') return;
     e.respondWith(
-      caches.open(RUNTIME).then(cache =>
-        cache.match(request).then(hit => {
-          const network = fetch(request).then(res => {
-            if (res.ok || res.type === 'opaque') cache.put(request, res.clone());
-            return res;
-          }).catch(() => hit);
-          return hit || network;
+        caches.match(e.request).then(cached => {
+            const fetchPromise = fetch(e.request).then(res => {
+                if (res && res.status === 200) {
+                    const clone = res.clone();
+                    caches.open(CACHE).then(c => c.put(e.request, clone));
+                }
+                return res;
+            }).catch(() => cached);
+            return cached || fetchPromise;
         })
-      )
     );
-    return;
-  }
-
-  // 3) Same-origin assets → cache-first + background refresh
-  e.respondWith(
-    caches.match(request).then(hit => {
-      const network = fetch(request).then(res => {
-        if (res.ok) { const cp = res.clone(); caches.open(RUNTIME).then(c => c.put(request, cp)); }
-        return res;
-      }).catch(() => hit);
-      return hit || network;
-    })
-  );
 });
