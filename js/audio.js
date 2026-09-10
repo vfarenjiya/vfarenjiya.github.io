@@ -69,3 +69,4 @@ const sWin = () => {
   setTimeout(() => tone(1320, 1320, .22, 'triangle', .14), 220);
   if (navigator.vibrate) navigator.vibrate([25, 40, 25]);
 };
+const sCall = () => { tone(1200, 1200, .06, 'sine', .08); setTimeout(() => tone(1200, 1200, .06, 'sine', .08), 90); };
