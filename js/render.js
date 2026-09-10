@@ -221,9 +221,10 @@ function drawOverlays(g) {
     }
     if (flags.pol) {
       const sum = [0, 0, 0, 0];
-      for (let u = 0; u < 9; u++) { const b = ((bx * 8 + by) * 3 + (u / 3 | 0)) * 3 + (u % 3) * 1;
+      for (let u = 0; u < 9; u++) {
         const st = ((bx * 8 + by) * 3 + (u / 3 | 0)) * 3 + (u % 3);
-        for (let a = 0; a < 4; a++) sum[a] += Q[st * 4 + a]; }
+        for (let a = 0; a < 4; a++) sum[a] += Q[st * 4 + a];
+      }
       let ai = 0, mx = -Infinity, mn = Infinity;
       for (let a = 0; a < 4; a++) { sum[a] /= 9; if (sum[a] > mx) { mx = sum[a]; ai = a; } if (sum[a] < mn) mn = sum[a]; }
       if (mx - mn > 1e-6)
