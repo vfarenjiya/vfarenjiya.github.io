@@ -1,22 +1,25 @@
 'use strict';
-/* ================= HUD ================= */
 let hudT = 0;
 function updateHud() {
   epVal.textContent = episodes;
   const e = mode === 'play' ? 0 : curEps();
   epsVal.textContent = e.toFixed(2);
   epsVal.style.color = e > .3 ? 'var(--lava)' : 'var(--teal)';
-  lastVal.textContent = returns.length ? returns[returns.length - 1] : '—';
+  lastVal.textContent = returns.length ? Math.round(returns[returns.length - 1]) : '—';
   okVal.textContent = okHist.length
     ? Math.round(100 * okHist.filter(Boolean).length / okHist.length) + '%' : '—';
-  bestVal.textContent = bestAvg == null ? 'BEST —' : 'BEST ' + bestAvg.toFixed(1);
+  bestVal.textContent = bestAvg == null ? 'BEST —' : 'BEST ' + bestAvg.toFixed(0);
+  altVal.textContent = Math.max(0, env.y).toFixed(0);
+  const vs = -env.vy;
+  vsVal.textContent = vs.toFixed(1);
+  vsVal.style.color = vs > WORLD.softVy ? '#ff7a6b' : '#7dffa8';
+  hsVal.textContent = Math.abs(env.vx).toFixed(1);
+  hsVal.style.color = Math.abs(env.vx) > WORLD.softVx ? '#ffb703' : '#7dffa8';
   if (mode === 'play') {
     runsVal.textContent = playRuns; playLastEl.textContent = playLast;
-    playLastEl.style.color = playLast.startsWith('G') ? 'var(--teal)' : 'var(--red)';
+    playLastEl.style.color = playLast.startsWith('L') ? 'var(--teal)' : 'var(--red)';
   }
 }
-
-/* ================= MAIN LOOP ================= */
 let lastT = performance.now();
 function frame(now) {
   const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
@@ -33,8 +36,6 @@ function frame(now) {
   hudT += dt; if (hudT > .12) { hudT = 0; updateHud(); }
   requestAnimationFrame(frame);
 }
-
-/* ================= UI ================= */
 function toast(msg) {
   toastEl.textContent = msg; toastEl.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => toastEl.classList.remove('show'), 2200);
@@ -60,14 +61,13 @@ function setMode(m) {
   if (m === 'play') running = true;
   acc = 0; respawnT = 0; beginEpisode(); updateTransport(); updateHud();
 }
-
 $('#segMode').addEventListener('click', e => {
   const b = e.target.closest('button'); if (b) setMode(b.dataset.m);
 });
 $('#segAlgo').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   algo = b.dataset.a; setSeg($('#segAlgo'), algo === 'qlearn' ? 0 : 1);
-  if (algo === 'sarsa') env.a = chooseAction(idxOf(env.c, env.r), curEps());
+  if (algo === 'sarsa') env.a = chooseAction(stateOf(env), curEps());
 });
 btnStart.addEventListener('click', () => {
   S(); running = !running;
@@ -83,7 +83,6 @@ $('#speed').addEventListener('input', e => {
   $('#spdVal').textContent = SPEEDS[speedIdx] <= 30
     ? SPEEDS[speedIdx] + ' st/s' : 'TURBO ×' + SPEEDS[speedIdx];
 });
-
 const SLIDERS = [
   ['alpha',    'α · LEARNING RATE',        0.05, 1,   0.01, v => v.toFixed(2)],
   ['gamma',    'γ · DISCOUNT',             0.80, 1,   0.01, v => v.toFixed(2)],
@@ -132,15 +131,12 @@ addEventListener('resize', checkOri);
 addEventListener('orientationchange', checkOri);
 addEventListener('pagehide', () => saveBrain());
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveBrain(); });
-
-/* splash */
 const splash = $('#splash');
 splash.addEventListener('pointerdown', () => {
   splash.classList.add('gone'); S();
   setTimeout(() => splash.remove(), 600);
 }, { once: true });
 
-/* ================= INIT ================= */
 const hadSave = loadBrain();
 setSeg($('#segAlgo'), algo === 'qlearn' ? 0 : 1);
 setSeg($('#segMode'), 0);
@@ -152,6 +148,5 @@ for (const [key] of SLIDERS) {
 if (hadSave && episodes > 0) toast('SAVED BRAIN LOADED · EP ' + episodes);
 layout(); beginEpisode(); updateTransport(); updateHud(); checkOri();
 requestAnimationFrame(frame);
-
 if ('serviceWorker' in navigator)
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
