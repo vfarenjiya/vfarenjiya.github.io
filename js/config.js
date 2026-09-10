@@ -1,14 +1,24 @@
 'use strict';
-/* ============ LUNAR LANDING MDP (learnable build) ============
-   Dense reference-tracking reward + guided exploration make the
-   +100 reachable, so tabular Q-learning has a signal from episode 1. */
+/* ============ LUNAR LANDING MDP (learnable build + missions) ============ */
 const WORLD = { w: 100, h: 170, g: 0.9, dt: 0.2,
   padX0: 35, padX1: 65, softVy: 3.5, softVx: 3.0,
   aMain: 2.4, aLat: 1.0,
   rCrash: -100, rWin: 100, maxSteps: 400 };
-const A_NET = WORLD.aMain - WORLD.g;              // net deceleration while burning
-const GUIDED = 0.5;                               // fraction of actions from autopilot demo
+const A_NET = WORLD.aMain - WORLD.g;
+const GUIDED = 0.5;
 const desiredVy = y => -Math.min(8, Math.sqrt(2 * A_NET * Math.max(0, y)) * 0.6);
+
+const MISSIONS = [
+  { name: 'M1 CALM',   pad0: 35, pad1: 65, svy: 3.5, svx: 3.0, gust: 0.0 },
+  { name: 'M2 NARROW', pad0: 42, pad1: 58, svy: 2.8, svx: 2.2, gust: 0.0 },
+  { name: 'M3 GUSTS',  pad0: 42, pad1: 58, svy: 2.8, svx: 2.2, gust: 0.5 },
+];
+let mission = 0, landM = 0;
+function applyMission(i) {
+  mission = i; const m = MISSIONS[i];
+  WORLD.padX0 = m.pad0; WORLD.padX1 = m.pad1;
+  WORLD.softVy = m.svy; WORLD.softVx = m.svx; WORLD.gust = m.gust;
+}
 
 const ACTIONS = 4;
 const XB = [0, 20, 40, 50, 60, 80, 100];
@@ -23,6 +33,8 @@ let Q = new Float64Array(STATES * 4);
 let algo = 'qlearn';
 const params = { alpha: 0.4, gamma: 0.99, epsStart: 0.9, epsEnd: 0.01, halfLife: 60 };
 let episodes = 0, returns = [], okHist = [], bestAvg = null, congrat = false;
+const visited = new Uint8Array(STATES);
+let visitedCount = 0, tdErr = 0;
 const curEps = () => params.epsEnd + (params.epsStart - params.epsEnd) * Math.exp(-episodes / params.halfLife);
 function maxQ(s) { const b = s * 4; return Math.max(Q[b], Q[b + 1], Q[b + 2], Q[b + 3]); }
 function chooseAction(s, eps) {
@@ -35,14 +47,14 @@ function chooseAction(s, eps) {
 }
 
 let mode = 'train', running = false;
-const env = { x: 50, y: 140, vx: 0, vy: 0, steps: 0, ret: 0, a: 0, mainOn: false, lat: 0 };
+const env = { x: 50, y: 140, vx: 0, vy: 0, steps: 0, ret: 0, a: 0, mainOn: false, lat: 0, gust: 0 };
 let respawnT = 0, acc = 0, agentHidden = false, trail = [];
 const view = { x: 50, y: 140, ready: false, thrust: 0, tilt: 0 };
 let playRuns = 0, playLast = '—';
 const SPEEDS = [1, 2, 4, 8, 15, 30, 60, 150, 400, 1200];
 let speedIdx = 4;
 const curSps = () => mode === 'play' ? 5 : SPEEDS[speedIdx];
-const flags = { pol: false, heat: false, trail: true };
+const flags = { pol: false, heat: false, trail: true, buck: false };
 let soundOn = false, particles = [], floaters = [], chartDirty = true;
 
 const $ = s => document.querySelector(s);
