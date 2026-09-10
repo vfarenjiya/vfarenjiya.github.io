@@ -151,3 +151,5 @@ body.blocked #cv,body.blocked #hud,body.blocked #dock{filter:blur(6px);pointer-e
 #coach .tap{display:inline-block;margin-top:20px;background:#fff;color:#17233b;
   font-family:var(--disp);font-size:11px;padding:11px 24px;border-radius:99px;
   box-shadow:0 4px 0 rgba(23,35,59,.25)}
+
+.pill .v{font-size:15px}
