@@ -1,146 +1,141 @@
 'use strict';
-function autopilot() {
-  const vdes = desiredVy(env.y);
-  if (env.vy < vdes - 0.3) return 2;
-  if (env.y < 60 && Math.abs(env.vx) > 1.0) return env.x > 50 ? 0 : 1;
-  if (env.y < 60 && Math.abs(env.x - 50) > 6) return env.x > 50 ? 0 : 1;
-  return 3;
-}
-function behaviorAction(s, eps) {
-  if (Math.random() < GUIDED) return autopilot();
-  return chooseAction(s, eps);
-}
-const CALLS = [60, 30, 10];
+const S_BUF = new Uint8Array(REPLAY * IN), S2_BUF = new Uint8Array(REPLAY * IN);
+const A_BUF = new Uint8Array(REPLAY), R_BUF = new Float32Array(REPLAY), D_BUF = new Uint8Array(REPLAY);
+let repLen = 0, repHead = 0;
+const tmpF = new Float32Array(IN);
+const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+const phi = () => -PHI_K * manhattan(env.snake[0], env.food);
 
+function placeFood() {
+  do { env.food = { x: (Math.random() * GW) | 0, y: (Math.random() * GH) | 0 }; }
+  while (env.snake.some(s => s.x === env.food.x && s.y === env.food.y));
+}
 function beginEpisode() {
-  env.x = 50 + (Math.random() * 8 - 4); env.y = 140;
-  env.vx = (Math.random() - .5) * 1.2; env.vy = 0;
-  env.steps = 0; env.ret = 0; env.mainOn = false; env.lat = 0;
-  env.gust = (Math.random() * 2 - 1) * (WORLD.gust || 0);
-  env.a = algo === 'sarsa' ? behaviorAction(stateOf(env), curEps()) : 0;
-  trail.length = 0; agentHidden = false;
+  env.snake = [{ x: 6, y: 12 }, { x: 6, y: 13 }, { x: 6, y: 14 }];
+  env.prev = env.snake.map(s => ({ ...s }));
+  env.dir = 0; env.steps = 0; env.noEat = 0; env.ret = 0; env.done = false; env.foods = 0;
+  placeFood(); env.stepAt = performance.now();
+}
+function encode(out, sn, food) {
+  out.fill(0);
+  for (let i = 0; i < sn.length; i++) { const p = sn[i]; out[(p.y * GW + p.x) * CH] = 1; }
+  const h = sn[0]; out[(h.y * GW + h.x) * CH + 1] = 1;
+  out[(food.y * GW + food.x) * CH + 2] = 1;
+}
+function stepEnv(a, greedy) {
+  const s = S_TMP; encode(s, env.snake, env.food);
+  const eps = greedy ? 0 : curEps();
+  let act;
+  if (Math.random() < eps) act = (Math.random() * NA) | 0;
+  else { const q = online.qValues(s); let b = -Infinity; act = 0;
+    for (let i = 0; i < NA; i++) if (q[i] > b) { b = q[i]; act = i; } }
+  const nd = act === 0 ? env.dir : act === 1 ? (env.dir + 3) % 4 : (env.dir + 1) % 4;
+  env.dir = nd;
+  const h = env.snake[0];
+  const nh = { x: h.x + DIRS[nd][0], y: h.y + DIRS[nd][1] };
+  const p0 = phi();
+  let reward = 0, done = false;
+  const wall = nh.x < 0 || nh.x >= GW || nh.y < 0 || nh.y >= GH;
+  const self = env.snake.some((p, i) => i < env.snake.length - 1 && p.x === nh.x && p.y === nh.y);
+  env.prev = env.snake.map(p => ({ ...p }));
+  if (wall || self) { done = true; reward = R_DIE; burst(nh.x, nh.y, '#ff5a4d'); if (curSps() <= 30) sSplash(); }
+  else {
+    env.snake.unshift(nh);
+    if (nh.x === env.food.x && nh.y === env.food.y) {
+      reward += R_EAT; env.foods++; env.noEat = 0;
+      burst(nh.x, nh.y, '#ffd166'); if (curSps() <= 30) sWin();
+      placeFood();
+    } else { env.snake.pop(); env.noEat++; }
+    if (env.noEat > NO_EAT_LIMIT) { done = true; reward += R_TIMEOUT; }
+    if (!done) reward += params.gamma * phi() - p0;      // potential-based shaping
+  }
+  env.steps++; env.ret += reward; env.done = done; env.stepAt = performance.now();
+  const s2 = S2_TMP; encode(s2, env.snake, env.food);
+  pushReplay(s, act, reward, s2, done);
+  return done;
+}
+const S_TMP = new Uint8Array(IN), S2_TMP = new Uint8Array(IN);
+function pushReplay(s, a, r, s2, d) {
+  const i = repHead;
+  S_BUF.set(s, i * IN); S2_BUF.set(s2, i * IN);
+  A_BUF[i] = a; R_BUF[i] = r; D_BUF[i] = d ? 1 : 0;
+  repHead = (repHead + 1) % REPLAY;
+  if (repLen < REPLAY) repLen++;
+}
+function trainFromReplay() {
+  if (repLen < WARM) return;
+  const batch = [];
+  for (let k = 0; k < BATCH; k++) batch.push((Math.random() * repLen) | 0);
+  let loss = 0;
+  for (const idx of batch) {
+    const o = idx * IN;
+    const x = tmpF; for (let i = 0; i < IN; i++) x[i] = S_BUF[o + i];
+    const x2 = new Float32Array(IN); for (let i = 0; i < IN; i++) x2[i] = S2_BUF[o + i];
+    const cache = online.forward(x, {});
+    const q = cache.q.slice();
+    let tgt;
+    if (D_BUF[idx]) tgt = R_BUF[idx];
+    else { const qt = target.qValues(x2); tgt = R_BUF[idx] + params.gamma * Math.max(qt[0], qt[1], qt[2]); }
+    const err = tgt - q[A_BUF[idx]];
+    loss += err * err;
+    const dq = new Float64Array(NA); dq[A_BUF[idx]] = err;
+    online.backward(cache, dq);
+  }
+  online.adam(params.lr);
+  lastLoss = loss / BATCH;
+  updates++;
+  if (updates % TARGET_EVERY === 0) target.copyFrom(online);
 }
 function doStep(greedy) {
-  const s = stateOf(env), eps = greedy ? 0 : curEps();
-  const a = greedy ? chooseAction(s, 0)
-        : (algo === 'sarsa' ? env.a : behaviorAction(s, eps));
-  let ax = 0, ay = 0; env.mainOn = false; env.lat = 0;
-  if (a === 0) { ax = -WORLD.aLat; env.lat = -1; }
-  else if (a === 1) { ax = WORLD.aLat; env.lat = 1; }
-  else if (a === 2) { ay = WORLD.aMain; env.mainOn = true; }
-  if (env.y < 110 && env.y > 15) ax += env.gust;          // mission-3 wind
-  const py0 = env.y;
-  env.vx += ax * WORLD.dt;
-  env.vy += (ay - WORLD.g) * WORLD.dt;
-  env.x += env.vx * WORLD.dt;
-  env.y += env.vy * WORLD.dt;
-  env.steps++;
-  for (const th of CALLS) if (py0 > th && env.y <= th && env.y > 0) {
-    floater(env.x, env.y + 8, th + ' m', '#9fd8ff');
-    if (curSps() <= 30) sCall();
-  }
-  const errV = Math.min(Math.abs(env.vy - desiredVy(env.y)), 4);
-  const errX = Math.min(Math.abs(env.x - 50) * 0.12 + (env.y < 40 ? Math.abs(env.vx) : 0) * 0.5, 3);
-  let reward = -0.06 * (errV / 4) - 0.03 * (errX / 3) - 0.02;
-  let result = '';
-  if (env.y <= 0) {
-    env.y = 0;
-    const onPad = env.x >= WORLD.padX0 && env.x <= WORLD.padX1;
-    const soft = (-env.vy) <= WORLD.softVy && Math.abs(env.vx) <= WORLD.softVx;
-    result = (onPad && soft) ? 'goal' : 'cliff';
-    reward += result === 'goal' ? WORLD.rWin : WORLD.rCrash;
-  } else if (env.x < -2 || env.x > WORLD.w + 2) { result = 'cliff'; reward += WORLD.rCrash; }
-  else if (env.steps >= WORLD.maxSteps) { result = 'timeout'; reward += WORLD.rCrash; }
-  const terminal = !!result, ns = stateOf(env);
-  let target;
-  if (terminal) target = reward;
-  else if (algo === 'qlearn' || greedy) target = reward + params.gamma * maxQ(ns);
-  else { const na = behaviorAction(ns, eps); target = reward + params.gamma * Q[ns * 4 + na]; env.a = na; }
-  const delta = target - Q[s * 4 + a];
-  tdErr = Math.abs(delta);
-  Q[s * 4 + a] += params.alpha * delta;
-  if (!visited[s]) { visited[s] = 1; visitedCount++; }
-
-  trail.push({ x: env.x, y: env.y }); if (trail.length > 140) trail.shift();
-  env.ret += reward;
-  if (curSps() <= 30) sTick();
-  if (result === 'cliff') { spawnCrash(env.x, Math.max(env.y, 0)); floater(env.x, Math.max(env.y, 8), 'CRASH', '#ff5a4d'); sSplash(); endEpisode('cliff', greedy); }
-  else if (result === 'goal') { spawnDust(env.x, 0); floater(env.x, 10, 'TOUCHDOWN', '#7dffa8'); sWin(); endEpisode('goal', greedy); }
-  else if (result === 'timeout') { floater(env.x, env.y, 'FUEL OUT', '#ffb703'); sSplash(); endEpisode('timeout', greedy); }
+  const done = stepEnv(0, greedy);
+  if (done) endEpisode(greedy);
 }
-function endEpisode(result, greedy) {
-  if (result === 'goal') {
-    landM++;
-    const th = [10, 40, 100], names = ['🥉 BRONZE PILOT', '🥈 SILVER PILOT', '🥇 GOLD PILOT'];
-    for (let i = 0; i < 3; i++) if (landM === th[i]) {
-      bannerT = 2; bannerTxt = names[i]; bannerCol = '#ffd166';
-      bannerSub = MISSIONS[mission].name + ' · ' + landM + ' landings';
-      spawnMedal(env.x, Math.max(env.y, 2));
-      toast(names[i] + ' — ' + MISSIONS[mission].name);
-    }
-  }
+function endEpisode(greedy) {
   if (!greedy) {
     returns.push(env.ret); if (returns.length > 900) returns.splice(0, returns.length - 600);
     episodes++;
-    okHist.push(result === 'goal'); if (okHist.length > 25) okHist.shift();
     if (returns.length >= 20) {
       const a = avg(returns.slice(-30));
       if (bestAvg == null || a > bestAvg) bestAvg = a;
-      if (!congrat && a >= 80) { congrat = true; toast('CONSISTENT SOFT LANDINGS!'); }
+      if (!congrat && a >= 40) { congrat = true; toast('IT KNOWS HOW TO HUNT!'); }
     }
     chartDirty = true;
-    if (episodes % 25 === 0) saveBrain();
+    if (episodes % 20 === 0) saveBrain();
   } else {
-    playRuns++; playLast = result === 'goal' ? 'LANDED ✓' : 'CRASH ✗';
+    playRuns++; playLast = env.foods + ' food';
     playHint.textContent = episodes === 0
-      ? 'Falls like a brick? The brain is untrained — switch to TRAIN first.'
-      : 'Brain trained on ' + episodes + ' episodes (' + (algo === 'qlearn' ? 'Q-learning' : 'SARSA') + ').';
+      ? 'Spinning in circles? The net is untrained — switch to TRAIN first.'
+      : 'DQN trained on ' + episodes + ' episodes · ' + updates + ' gradient updates.';
   }
-  respawnT = greedy ? 0.9 : (curSps() <= 30 ? 0.5 : 0.02);
-  agentHidden = result === 'cliff';
+  respawnT = curSps() <= 30 ? 0.45 : 0.02;
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-/* ---- per-mission brains ---- */
-const KEY = () => 'll-v4-m' + mission;
+const KEY = 'snake-dqn-v1';
 function saveBrain(manual) {
   try {
-    localStorage.setItem(KEY(), JSON.stringify({
-      v: 4, algo, params: { ...params }, episodes, landM,
-      returns: returns.slice(-300), bestAvg, Q: Array.from(Q), flags, soundOn }));
+    localStorage.setItem(KEY, JSON.stringify({
+      v: 1, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
+      updates, net: online.serialize() }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
 }
 function loadBrain() {
   try {
-    const d = JSON.parse(localStorage.getItem(KEY()));
-    if (!d || d.v !== 4 || !Array.isArray(d.Q) || d.Q.length !== STATES * 4) return false;
-    Q = Float64Array.from(d.Q); algo = d.algo || 'qlearn';
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (!d || d.v !== 1 || !d.net) return false;
+    online.load(d.net); target.copyFrom(online);
     Object.assign(params, d.params || {});
     episodes = d.episodes | 0; returns = d.returns || [];
-    bestAvg = (d.bestAvg == null ? null : d.bestAvg);
-    landM = d.landM | 0;
-    Object.assign(flags, d.flags || {}); soundOn = !!d.soundOn;
+    bestAvg = (d.bestAvg == null ? null : d.bestAvg); updates = d.updates | 0;
     return true;
   } catch (e) { return false; }
 }
-function wipeInMemory() {
-  Q.fill(0); episodes = 0; returns.length = 0; okHist.length = 0;
-  bestAvg = null; congrat = false; landM = 0;
-  visited.fill(0); visitedCount = 0; tdErr = 0;
-}
 function resetBrain() {
-  wipeInMemory(); playRuns = 0; playLast = '—';
-  try { localStorage.removeItem(KEY()); } catch (e) {}
+  Object.assign(online, new DQN()); online.t = 0;
+  const f = new DQN(); online.copyFrom(f); target.copyFrom(online);
+  episodes = 0; returns.length = 0; bestAvg = null; congrat = false; updates = 0;
+  repLen = 0; repHead = 0; playRuns = 0; playLast = '—';
+  try { localStorage.removeItem(KEY); } catch (e) {}
   beginEpisode(); chartDirty = true; toast('BRAIN WIPED');
-}
-function setMission(i) {
-  if (i === mission) return;
-  saveBrain();
-  applyMission(i);
-  if (!loadBrain()) wipeInMemory();
-  playRuns = 0; playLast = '—';
-  acc = 0; respawnT = 0; beginEpisode();
-  chartDirty = true;
-  toast('MISSION: ' + MISSIONS[i].name);
 }
