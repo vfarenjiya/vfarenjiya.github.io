@@ -1,330 +1,757 @@
-// FIX #1: safe storage wrapper — never throws
-const store = {
-    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-};
+(function () {
+  'use strict';
 
-let game, agent, gameLoop = null, mode = 'human';
-let running = false, paused = false;
-let worker = null;
-let bestScore = parseInt(store.get('snakeBest', '0'), 10);
-let gamesPlayed = parseInt(store.get('snakeGames', '0'), 10);
-let totalScore = parseInt(store.get('snakeTotal', '0'), 10);
-let hapticsOn = true, soundOn = true;
-let audioCtx = null;
-let deferredPrompt = null;
-
-// FIX #4: surface any error visibly so "blank screen" never happens silently
-window.addEventListener('error', (e) => {
-    console.error('APP ERROR:', e.message, e.error);
-    toast('⚠️ ' + (e.message || 'Unexpected error'));
-});
-
-function init() {
-    const canvas = document.getElementById('gameCanvas');
-    game = new SnakeGame(canvas, 20);
-    agent = new QLearningAgent();
-
-    const saved = store.get('snakeQModel', null);
-    if (saved) agent.deserialize(saved);
-
-    setupModes();
-    setupDpad();
-    setupSwipe();
-    setupKeyboard();
-    setupButtons();
-    setupInstall();
-    setupOffline();
-    updateHUD();
-
-    // FIX #4: crash-proof render loop
-    (function renderLoop() {
-        try {
-            const w = game.canvas.parentElement.getBoundingClientRect().width;
-            if (Math.abs(w - game.displaySize) > 1) game.resize();  // auto-fix size
-            if (mode !== 'train') game.draw();
-        } catch (err) {
-            console.error('DRAW ERROR:', err);
-        }
-        requestAnimationFrame(renderLoop);
-    })();
-}
-
-// ===== Sound =====
-function beep(freq, dur, type) {
-    if (!soundOn) return;
-    dur = dur || 0.08; type = type || 'square';
-    try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type; osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + dur);
-    } catch (e) {}
-}
-
-function vibrate(p) {
-    try { if (hapticsOn && navigator.vibrate) navigator.vibrate(p); } catch (e) {}
-}
-
-// ===== Modes =====
-function setupModes() {
-    document.querySelectorAll('.modes button').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.modes button').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            mode = btn.dataset.mode;
-            stopGame();
-            game.reset();
-            updateHUD();
-            document.getElementById('trainPanel').classList.toggle('show', mode === 'train');
-            document.getElementById('dpad').style.display = (mode === 'human') ? 'grid' : 'none';
-            vibrate(30);
-        });
-    });
-}
-
-// ===== Input =====
-function setupDpad() {
-    document.querySelectorAll('#dpad button[data-dir]').forEach(btn => {
-        btn.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(btn.dataset.dir); }, { passive: false });
-        btn.addEventListener('mousedown', () => handleInput(btn.dataset.dir));
-    });
-}
-
-function setupSwipe() {
-    const wrap = document.getElementById('gameWrap');
-    let sx = 0, sy = 0;
-    wrap.addEventListener('touchstart', (e) => {
-        sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-    }, { passive: true });
-    wrap.addEventListener('touchend', (e) => {
-        const dx = e.changedTouches[0].clientX - sx;
-        const dy = e.changedTouches[0].clientY - sy;
-        if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-        if (Math.abs(dx) > Math.abs(dy)) handleInput(dx > 0 ? 'RIGHT' : 'LEFT');
-        else handleInput(dy > 0 ? 'DOWN' : 'UP');
-    }, { passive: true });
-}
-
-function setupKeyboard() {
-    document.addEventListener('keydown', (e) => {
-        const map = { ArrowUp:'UP', ArrowDown:'DOWN', ArrowLeft:'LEFT', ArrowRight:'RIGHT', w:'UP', s:'DOWN', a:'LEFT', d:'RIGHT' };
-        if (map[e.key]) { e.preventDefault(); handleInput(map[e.key]); }
-        if (e.key === ' ') togglePause();
-    });
-}
-
-// FIX #5: first input auto-starts the game instead of moving a "not started" snake
-function handleInput(dir) {
-    if (mode !== 'human' || paused) return;
-    if (game.gameOver) { game.reset(); updateHUD(); }
-    if (!running) startGame();
-    const reward = game.move(dir);
-    if (reward === 10) { beep(600, 0.1); vibrate(30); }
-    updateHUD();
-    if (game.gameOver) onGameOver();
-}
-
-// ===== Buttons =====
-function setupButtons() {
-    document.getElementById('startBtn').addEventListener('click', startGame);
-    document.getElementById('pauseBtn').addEventListener('click', togglePause);
-    document.getElementById('resetBtn').addEventListener('click', () => {
-        stopGame(); game.reset(); updateHUD();
-        document.getElementById('pauseBtn').textContent = '⏸ Pause';
-    });
-    document.getElementById('saveBtn').addEventListener('click', () => {
-        store.set('snakeQModel', agent.serialize());
-        toast('💾 Model saved!');
-        vibrate([30, 50, 30]);
-    });
-}
-
-function startGame() {
-    vibrate(20);
-    if (mode === 'train') { startTraining(); return; }
-    stopGame();
-    game.reset();
-    updateHUD();
-    running = true; paused = false;
-    document.getElementById('pauseBtn').textContent = '⏸ Pause';
-    gameLoop = setInterval(tick, mode === 'ai' ? 90 : 130);
-}
-
-function tick() {
-    if (paused) return;
-    if (game.gameOver) { onGameOver(); return; }
-
-    if (mode === 'ai') {
-        const state = game.getState();
-        const all = game.getSafeActions();
-        const safe = all.filter(a => a.safe);
-        const valid = (safe.length ? safe : all).map(a => a.dir);
-        const action = agent.choose(state, valid, false);
-        const reward = game.move(action);
-        if (reward === 10) { beep(600, 0.1); vibrate(30); }
-        updateHUD();
-        if (game.gameOver) onGameOver();
+  const store = {
+    get(k, d) {
+      try {
+        const v = localStorage.getItem(k);
+        return v === null ? d : v;
+      } catch (e) {
+        return d;
+      }
+    },
+    set(k, v) {
+      try {
+        localStorage.setItem(k, v);
+      } catch (e) {}
     }
-}
+  };
 
-function stopGame() {
-    if (gameLoop) { clearInterval(gameLoop); gameLoop = null; }
-    running = false;
-}
+  const Q_LENGTH = 48 * 4;
 
-function togglePause() {
-    if (!running) return;
-    paused = !paused;
-    document.getElementById('pauseBtn').textContent = paused ? '▶ Resume' : '⏸ Pause';
-}
+  const qTables = {
+    q: new Float64Array(Q_LENGTH),
+    sarsa: new Float64Array(Q_LENGTH)
+  };
 
-// FIX #6: auto-restart in Watch mode so the demo keeps running
-function onGameOver() {
-    stopGame();
-    beep(150, 0.3, 'sawtooth');
-    vibrate([100, 50, 100]);
-    gamesPlayed++;
-    totalScore += game.score;
-    if (game.score > bestScore) {
-        bestScore = game.score;
-        store.set('snakeBest', String(bestScore));
-        toast('🏆 New Best Score!');
-    }
-    store.set('snakeGames', String(gamesPlayed));
-    store.set('snakeTotal', String(totalScore));
-    updateHUD();
+  const returns = {
+    q: [],
+    sarsa: []
+  };
 
-    if (mode === 'ai') setTimeout(() => { if (mode === 'ai') startGame(); }, 1200);
-}
+  const liveStates = {
+    q: null,
+    sarsa: null
+  };
 
-function updateHUD() {
-    if (!game) return;
-    document.getElementById('score').textContent = game.score;
-    document.getElementById('best').textContent = bestScore;
-    document.getElementById('games').textContent = gamesPlayed;
-    document.getElementById('avg').textContent = gamesPlayed ? (totalScore / gamesPlayed).toFixed(1) : '0';
-    document.getElementById('hudScore').textContent = game.score;
-    document.getElementById('hudBest').textContent = bestScore;
-}
+  const lastStats = {
+    q: null,
+    sarsa: null
+  };
 
-// ===== Training (Web Worker) =====
-function startTraining() {
-    if (worker) worker.terminate();
-    worker = new Worker('train-worker.js');
+  const progressState = {
+    q: { episode: 0, epsilon: 1 },
+    sarsa: { episode: 0, epsilon: 1 }
+  };
 
-    const saved = store.get('snakeQModel', null);
-    if (saved) worker.postMessage({ type: 'load', config: { data: saved } });
-    worker.postMessage({ type: 'start', config: { episodes: 500, gridSize: 20 } });
+  const trained = {
+    q: false,
+    sarsa: false
+  };
 
-    const chartData = [];
-    document.getElementById('startBtn').disabled = true;
+  const workers = {
+    q: null,
+    sarsa: null
+  };
 
-    worker.onmessage = (e) => {
-        const d = e.data;
-        if (d.type === 'progress') {
-            document.getElementById('episode').textContent = d.episode + '/' + d.totalEpisodes;
-            document.getElementById('epsilon').textContent = d.epsilon.toFixed(3);
-            document.getElementById('avgReward').textContent = d.avgReward.toFixed(1);
-            document.getElementById('progressFill').style.width = (d.episode / d.totalEpisodes * 100) + '%';
-            chartData.push(d.avgReward);
-            drawChart(chartData);
-        }
-        if (d.type === 'done') {
-            store.set('snakeQModel', d.qData);
-            agent.deserialize(d.qData);
-            document.getElementById('startBtn').disabled = false;
-            toast('✅ Training complete! Model saved.');
-            vibrate([50, 50, 50]);
-        }
-    };
-    worker.onerror = (e) => {
-        console.error('WORKER ERROR:', e.message);
-        toast('⚠️ Training error: ' + e.message);
-        document.getElementById('startBtn').disabled = false;
-    };
-}
+  const activeWorkers = {
+    q: false,
+    sarsa: false
+  };
 
-function drawChart(data) {
-    const canvas = document.getElementById('chart');
-    if (!canvas.clientWidth) return;
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    canvas.width = w * dpr; canvas.height = h * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    if (data.length < 2) return;
-    const min = Math.min.apply(null, data), max = Math.max.apply(null, data);
-    const range = (max - min) || 1;
-    ctx.strokeStyle = '#0f9d58';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    data.forEach((v, i) => {
-        const x = (i / (data.length - 1)) * w;
-        const y = h - ((v - min) / range) * (h - 20) - 10;
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-}
+  let mode = 'q';
+  let viewAlg = 'q';
+  let episodes = 500;
+  let trainingActive = false;
 
-// ===== PWA =====
-function setupInstall() {
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        document.getElementById('installBtn').style.display = 'block';
-    });
-    document.getElementById('installBtn').addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const r = await deferredPrompt.userChoice;
-        if (r.outcome === 'accepted') toast('🎉 App installed!');
-        deferredPrompt = null;
-        document.getElementById('installBtn').style.display = 'none';
-    });
-}
+  let renderer = null;
+  let chart = null;
+  let playback = null;
 
-function setupOffline() {
-    const badge = document.getElementById('offlineBadge');
-    const update = () => { badge.style.display = navigator.onLine ? 'none' : 'inline-block'; };
-    window.addEventListener('online', update);
-    window.addEventListener('offline', update);
-    update();
-}
+  let deferredInstallPrompt = null;
+  let wakeLock = null;
+  let stopFallbackTimer = null;
 
-function toast(msg) {
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
-}
+  function $(id) {
+    return document.getElementById(id);
+  }
 
-async function requestWakeLock() {
-    try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch (e) {}
-}
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') requestWakeLock();
-});
+  let toastTimer = null;
 
-// Robust boot: works whether scripts load before or after DOM ready
-function boot() {
+  function showToast(message) {
+    const el = $('toast');
+    if (!el) return;
+
+    el.textContent = String(message);
+    el.hidden = false;
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      el.hidden = true;
+    }, 3500);
+  }
+
+  globalThis.showToast = showToast;
+
+  window.addEventListener('error', function (event) {
+    showToast('Error: ' + (event.message || 'unknown'));
+  });
+
+  function boot() {
     try {
-        init();
-        requestWakeLock();
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(e => console.log('SW failed:', e));
+      restore();
+      initUI();
+
+      renderer = new HeatmapRenderer($('heatmap'));
+      chart = new ReturnChart($('chart'));
+
+      chart.data.q = returns.q;
+      chart.data.sarsa = returns.sarsa;
+      chart.mode = mode === 'both' ? 'both' : mode;
+
+      renderer.showHeatmap = $('toggleHeatmap').checked;
+      renderer.showArrows = $('toggleArrows').checked;
+      renderer.setQ(qTables[viewAlg]);
+
+      playback = new PlaybackController({
+        getQ: function () {
+          return qTables[viewAlg];
+        },
+        toast: showToast,
+        elements: {
+          first: $('pbFirst'),
+          back: $('pbBack'),
+          play: $('pbPlay'),
+          forward: $('pbForward'),
+          speed: $('pbSpeed'),
+          speedLabel: $('pbSpeedLabel'),
+          bars: [
+            $('qbar-0'),
+            $('qbar-1'),
+            $('qbar-2'),
+            $('qbar-3')
+          ],
+          vals: [
+            $('qval-0'),
+            $('qval-1'),
+            $('qval-2'),
+            $('qval-3')
+          ]
         }
+      });
+
+      initPWA();
+      updateOfflineBadge();
+      updateTabStyles();
+      updateEpisodeButtons();
+      updateLabels();
+      updateStats();
     } catch (err) {
-        console.error('BOOT ERROR:', err);
-        toast('⚠️ Boot error: ' + err.message);
+      if (globalThis.console) console.error(err);
+      showToast('Boot error: ' + ((err && err.message) || err));
     }
-}
-if (document.readyState === 'complete' || document.readyState === 'interactive') boot();
-else window.addEventListener('load', boot);
+  }
+
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    boot();
+  } else {
+    window.addEventListener('load', boot);
+  }
+
+  function restore() {
+    const configRaw = store.get('cw_config', null);
+
+    if (configRaw) {
+      try {
+        const cfg = JSON.parse(configRaw);
+
+        if (cfg && typeof cfg === 'object') {
+          if (cfg.alpha !== undefined) $('alpha').value = String(cfg.alpha);
+          if (cfg.gamma !== undefined) $('gamma').value = String(cfg.gamma);
+          if (cfg.watchSpeed !== undefined) $('watchSpeed').value = String(cfg.watchSpeed);
+          if (cfg.heatmap !== undefined) $('toggleHeatmap').checked = !!cfg.heatmap;
+          if (cfg.arrows !== undefined) $('toggleArrows').checked = !!cfg.arrows;
+
+          episodes = Number(cfg.episodes) || 500;
+
+          if (cfg.mode === 'sarsa' || cfg.mode === 'both') {
+            mode = cfg.mode;
+          } else {
+            mode = 'q';
+          }
+
+          if (cfg.viewAlg === 'sarsa') {
+            viewAlg = 'sarsa';
+          } else {
+            viewAlg = 'q';
+          }
+
+          if (mode !== 'both') {
+            viewAlg = mode;
+          }
+        }
+      } catch (e) {
+        // Ignore corrupt config.
+      }
+    }
+
+    const qRaw = {
+      q: store.get('cw_q_qlearning', ''),
+      sarsa: store.get('cw_q_sarsa', '')
+    };
+
+    ['q', 'sarsa'].forEach(function (alg) {
+      const raw = qRaw[alg];
+      if (!raw) return;
+
+      const nums = raw.split(',').map(Number);
+
+      if (nums.length === Q_LENGTH && nums.every(Number.isFinite)) {
+        qTables[alg] = Float64Array.from(nums);
+        trained[alg] = qTables[alg].some(function (v) {
+          return v !== 0;
+        });
+      }
+    });
+
+    const statsRaw = store.get('cw_stats', null);
+
+    if (statsRaw) {
+      try {
+        const saved = JSON.parse(statsRaw);
+
+        if (saved && saved.returns) {
+          if (Array.isArray(saved.returns.q)) returns.q = saved.returns.q;
+          if (Array.isArray(saved.returns.sarsa)) returns.sarsa = saved.returns.sarsa;
+        }
+
+        if (saved && saved.lastStats) {
+          lastStats.q = saved.lastStats.q || null;
+          lastStats.sarsa = saved.lastStats.sarsa || null;
+        }
+
+        if (saved && saved.progressState) {
+          if (saved.progressState.q) progressState.q = saved.progressState.q;
+          if (saved.progressState.sarsa) progressState.sarsa = saved.progressState.sarsa;
+        }
+      } catch (e) {
+        // Ignore corrupt stats.
+      }
+    }
+  }
+
+  function initUI() {
+    document.querySelectorAll('.tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setMode(btn.dataset.mode);
+      });
+    });
+
+    document.querySelectorAll('.episodes-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        episodes = Number(btn.dataset.episodes) || 500;
+        updateEpisodeButtons();
+        saveConfig();
+      });
+    });
+
+    $('trainBtn').addEventListener('click', startTraining);
+    $('stopBtn').addEventListener('click', stopTraining);
+    $('resetBtn').addEventListener('click', resetAll);
+
+    $('watchSpeed').addEventListener('input', function () {
+      updateLabels();
+
+      if (Number($('watchSpeed').value) === 0 && renderer) {
+        renderer.liveState = null;
+      }
+
+      saveConfig();
+    });
+
+    $('alpha').addEventListener('input', function () {
+      updateLabels();
+      saveConfig();
+    });
+
+    $('gamma').addEventListener('input', function () {
+      updateLabels();
+      saveConfig();
+    });
+
+    $('toggleHeatmap').addEventListener('change', function () {
+      if (renderer) renderer.showHeatmap = this.checked;
+      saveConfig();
+    });
+
+    $('toggleArrows').addEventListener('change', function () {
+      if (renderer) renderer.showArrows = this.checked;
+      saveConfig();
+    });
+  }
+
+  function setMode(nextMode) {
+    mode = nextMode;
+
+    if (mode !== 'both') {
+      viewAlg = mode;
+    }
+
+    if (chart) {
+      chart.mode = mode === 'both' ? 'both' : mode;
+    }
+
+    if (renderer) {
+      renderer.setQ(qTables[viewAlg]);
+      renderer.liveState =
+        trainingActive && Number($('watchSpeed').value) > 0
+          ? liveStates[viewAlg]
+          : null;
+    }
+
+    if (playback) playback.reset();
+
+    updateTabStyles();
+    updateStats();
+    saveConfig();
+  }
+
+  function updateTabStyles() {
+    document.querySelectorAll('.tab').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+  }
+
+  function updateEpisodeButtons() {
+    document.querySelectorAll('.episodes-btn').forEach(function (btn) {
+      btn.classList.toggle(
+        'active',
+        Number(btn.dataset.episodes) === episodes
+      );
+    });
+  }
+
+  function updateLabels() {
+    const alpha = Number($('alpha').value);
+    const gamma = Number($('gamma').value);
+    const speed = Number($('watchSpeed').value);
+
+    $('alphaLabel').textContent = `α ${alpha.toFixed(2)}`;
+    $('gammaLabel').textContent = `γ ${gamma.toFixed(2)}`;
+    $('speedLabel').textContent =
+      speed === 0 ? 'Speed 0/turbo' : `Speed ${speed}/s`;
+
+    const pbSpeed = Number($('pbSpeed').value);
+    $('pbSpeedLabel').textContent = `Playback ${pbSpeed}/s`;
+  }
+
+  function currentConfig() {
+    return {
+      episodes,
+      alpha: Number($('alpha').value),
+      gamma: Number($('gamma').value),
+      slipProbability: 0,
+      watchSpeed: Number($('watchSpeed').value) || 0
+    };
+  }
+
+  function startTraining() {
+    if (trainingActive) {
+      showToast('Training already running.');
+      return;
+    }
+
+    const algs = mode === 'both'
+      ? ['q', 'sarsa']
+      : [mode === 'sarsa' ? 'sarsa' : 'q'];
+
+    const cfg = currentConfig();
+    let started = false;
+
+    algs.forEach(function (alg) {
+      terminateWorker(alg);
+      resetAlgorithmData(alg);
+
+      const worker = ensureWorker(alg);
+      if (!worker) return;
+
+      activeWorkers[alg] = true;
+
+      worker.postMessage({
+        type: 'start',
+        config: {
+          episodes: cfg.episodes,
+          alpha: cfg.alpha,
+          gamma: cfg.gamma,
+          algorithm: alg === 'q' ? 'q' : 'sarsa',
+          slipProbability: cfg.slipProbability,
+          watchSpeed: cfg.watchSpeed
+        }
+      });
+
+      started = true;
+    });
+
+    if (!started) {
+      showToast('Could not start training.');
+      return;
+    }
+
+    trainingActive = true;
+    $('trainBtn').disabled = true;
+    $('stopBtn').disabled = false;
+
+    requestWakeLock();
+    saveConfig();
+  }
+
+  function stopTraining() {
+    if (!trainingActive) return;
+
+    ['q', 'sarsa'].forEach(function (alg) {
+      if (activeWorkers[alg] && workers[alg]) {
+        try {
+          workers[alg].postMessage({ type: 'stop' });
+        } catch (e) {
+          // Ignore worker post errors.
+        }
+      }
+    });
+
+    clearTimeout(stopFallbackTimer);
+    stopFallbackTimer = setTimeout(function () {
+      if (!trainingActive) return;
+
+      ['q', 'sarsa'].forEach(function (alg) {
+        if (activeWorkers[alg]) terminateWorker(alg);
+      });
+
+      finalizeTraining();
+    }, 3000);
+  }
+
+  function resetAll() {
+    trainingActive = false;
+    clearTimeout(stopFallbackTimer);
+
+    ['q', 'sarsa'].forEach(function (alg) {
+      terminateWorker(alg);
+
+      qTables[alg] = new Float64Array(Q_LENGTH);
+      returns[alg] = [];
+      liveStates[alg] = null;
+      lastStats[alg] = null;
+      progressState[alg] = { episode: 0, epsilon: 1 };
+      trained[alg] = false;
+
+      if (chart) chart.data[alg] = returns[alg];
+
+      saveQ(alg);
+    });
+
+    if (renderer) {
+      renderer.setQ(qTables[viewAlg]);
+      renderer.liveState = null;
+    }
+
+    if (playback) playback.reset();
+
+    $('trainBtn').disabled = false;
+    $('stopBtn').disabled = true;
+
+    updateStats();
+    saveStats();
+    saveConfig();
+
+    showToast('Reset complete.');
+  }
+
+  function resetAlgorithmData(alg) {
+    qTables[alg] = new Float64Array(Q_LENGTH);
+    returns[alg] = [];
+    liveStates[alg] = null;
+    lastStats[alg] = null;
+    progressState[alg] = { episode: 0, epsilon: 1 };
+    trained[alg] = false;
+
+    if (chart) chart.data[alg] = returns[alg];
+
+    if (renderer && viewAlg === alg) {
+      renderer.setQ(qTables[alg]);
+      renderer.liveState = null;
+    }
+  }
+
+  function ensureWorker(alg) {
+    if (workers[alg]) return workers[alg];
+
+    if (typeof Worker === 'undefined') {
+      showToast('Web Workers unavailable.');
+      return null;
+    }
+
+    try {
+      const worker = new Worker('./trainer-worker.js');
+
+      worker.onmessage = function (event) {
+        handleWorkerMessage(alg, event.data);
+      };
+
+      worker.onerror = function (event) {
+        showToast('Worker error: ' + (event.message || 'unknown'));
+      };
+
+      workers[alg] = worker;
+      return worker;
+    } catch (err) {
+      showToast('Worker error: ' + ((err && err.message) || err));
+      return null;
+    }
+  }
+
+  function terminateWorker(alg) {
+    if (workers[alg]) {
+      try {
+        workers[alg].terminate();
+      } catch (e) {
+        // Ignore termination errors.
+      }
+      workers[alg] = null;
+    }
+
+    activeWorkers[alg] = false;
+  }
+
+  function handleWorkerMessage(alg, msg) {
+    if (!msg || !msg.type) return;
+
+    try {
+      if (msg.type === 'progress') {
+        if (typeof msg.state === 'number') {
+          liveStates[alg] = msg.state;
+
+          if (
+            renderer &&
+            viewAlg === alg &&
+            trainingActive &&
+            Number($('watchSpeed').value) > 0
+          ) {
+            renderer.liveState = msg.state;
+          }
+        } else {
+          progressState[alg].episode = msg.episode || 0;
+
+          if (typeof msg.epsilon === 'number') {
+            progressState[alg].epsilon = msg.epsilon;
+          }
+
+          if (chart) {
+            chart.addPoint(alg, msg.episode || 0, msg.episodeReturn || 0);
+          }
+
+          updateStats();
+        }
+      } else if (msg.type === 'qsnapshot') {
+        if (msg.qBuffer) {
+          const q = new Float64Array(msg.qBuffer);
+          qTables[alg] = q;
+          trained[alg] = true;
+
+          if (renderer && viewAlg === alg) {
+            renderer.setQ(q);
+          }
+        }
+      } else if (msg.type === 'done') {
+        if (msg.qBuffer) {
+          const q = new Float64Array(msg.qBuffer);
+          qTables[alg] = q;
+          trained[alg] = true;
+
+          if (renderer && viewAlg === alg) {
+            renderer.setQ(q);
+          }
+
+          saveQ(alg);
+        }
+
+        if (msg.stats) {
+          lastStats[alg] = msg.stats;
+        }
+
+        activeWorkers[alg] = false;
+        updateStats();
+        checkAllDone();
+      } else if (msg.type === 'error') {
+        showToast(msg.message || 'Worker error.');
+        activeWorkers[alg] = false;
+        checkAllDone();
+      }
+    } catch (err) {
+      if (globalThis.console) console.error(err);
+      showToast('Message error: ' + ((err && err.message) || err));
+    }
+  }
+
+  function checkAllDone() {
+    if (activeWorkers.q || activeWorkers.sarsa) return;
+    finalizeTraining();
+  }
+
+  function finalizeTraining() {
+    if (!trainingActive) return;
+
+    trainingActive = false;
+
+    clearTimeout(stopFallbackTimer);
+    stopFallbackTimer = null;
+
+    $('trainBtn').disabled = false;
+    $('stopBtn').disabled = true;
+
+    if (renderer) renderer.liveState = null;
+
+    saveStats();
+    releaseWakeLock();
+
+    if (navigator.vibrate) {
+      try {
+        navigator.vibrate(20);
+      } catch (e) {
+        // Ignore vibration errors.
+      }
+    }
+
+    showToast('Training complete.');
+  }
+
+  function updateStats() {
+    const prog = progressState[viewAlg] || { episode: 0, epsilon: 1 };
+
+    $('statEpisode').textContent = String(prog.episode || 0);
+
+    const epsilon = typeof prog.epsilon === 'number'
+      ? prog.epsilon
+      : 1;
+
+    $('statEpsilon').textContent = epsilon.toFixed(3);
+
+    let avg = '—';
+
+    const stats = lastStats[viewAlg];
+
+    if (stats && Number.isFinite(stats.avgReturnLast50)) {
+      avg = stats.avgReturnLast50.toFixed(1);
+    } else if (returns[viewAlg].length) {
+      const slice = returns[viewAlg].slice(-50);
+      let sum = 0;
+
+      for (let i = 0; i < slice.length; i++) {
+        sum += Number(slice[i].y) || 0;
+      }
+
+      avg = (sum / slice.length).toFixed(1);
+    }
+
+    $('statAvg').textContent = avg;
+  }
+
+  function saveQ(alg) {
+    const key = alg === 'q' ? 'cw_q_qlearning' : 'cw_q_sarsa';
+    store.set(key, Array.from(qTables[alg]).join(','));
+  }
+
+  function saveStats() {
+    store.set('cw_stats', JSON.stringify({
+      returns,
+      lastStats,
+      progressState
+    }));
+  }
+
+  function saveConfig() {
+    store.set('cw_config', JSON.stringify({
+      alpha: $('alpha').value,
+      gamma: $('gamma').value,
+      episodes,
+      watchSpeed: $('watchSpeed').value,
+      heatmap: $('toggleHeatmap').checked,
+      arrows: $('toggleArrows').checked,
+      mode,
+      viewAlg
+    }));
+  }
+
+  function initPWA() {
+    window.addEventListener('online', updateOfflineBadge);
+    window.addEventListener('offline', updateOfflineBadge);
+
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      $('installBtn').hidden = false;
+    });
+
+    $('installBtn').addEventListener('click', async function () {
+      if (!deferredInstallPrompt) return;
+
+      deferredInstallPrompt.prompt();
+
+      try {
+        await deferredInstallPrompt.userChoice;
+      } catch (e) {
+        // Ignore prompt errors.
+      }
+
+      deferredInstallPrompt = null;
+      $('installBtn').hidden = true;
+    });
+
+    window.addEventListener('appinstalled', function () {
+      $('installBtn').hidden = true;
+      showToast('Installed.');
+    });
+
+    if (
+      window.matchMedia &&
+      window.matchMedia('(display-mode: standalone)').matches
+    ) {
+      $('installBtn').hidden = true;
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(function () {
+        // Service worker is progressive enhancement.
+      });
+    }
+  }
+
+  function updateOfflineBadge() {
+    const offline = navigator.onLine === false;
+    $('offlineBadge').hidden = !offline;
+  }
+
+  async function requestWakeLock() {
+    try {
+      if (navigator.wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    } catch (e) {
+      wakeLock = null;
+    }
+  }
+
+  function releaseWakeLock() {
+    try {
+      if (wakeLock) wakeLock.release();
+    } catch (e) {
+      // Ignore wake lock errors.
+    }
+    wakeLock = null;
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && trainingActive) {
+      requestWakeLock();
+    }
+  });
+})();
