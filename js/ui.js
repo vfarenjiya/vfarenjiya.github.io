@@ -24,7 +24,8 @@ function updateHud() {
 function brainInfo() {
   const el = $('#brainInfo'); if (!el) return;
   el.textContent =
-    'MDP   432 states × 4 actions = 1,728 Q-values\n' +
+    'MDP   720 states × 4 actions = 2,880 Q-values · ' + MISSIONS[mission].name + '\n' +
+    'COV   ' + visitedCount + '/720 visited · |δ| ' + tdErr.toFixed(2) + ' · 🏅 ' + landM + '\n' +
     'ε     ' + curEps().toFixed(3) + '  =  ' + params.epsEnd + ' + ' + params.epsStart + '·e^(−ep/' + params.halfLife + ')\n' +
     (algo === 'qlearn'
       ? 'Q(s,a) ← Q + α·[ r + γ·max Q(s′,·) − Q ]   α=' + params.alpha + ' γ=' + params.gamma + '\noff-policy: targets the greedy action'
@@ -77,7 +78,10 @@ function setMode(m) {
   if (m === 'play') running = true;
   acc = 0; respawnT = 0; beginEpisode(); updateTransport(); updateHud();
 }
-/* slow-mo: hold the sky */
+function refreshMissionBtns() {
+  [...document.querySelectorAll('#misRow .tgl')].forEach((b, i) =>
+    b.classList.toggle('on', i === mission));
+}
 cv.addEventListener('pointerdown', () => { if (running && curSps() <= 30) timeScale = .35; });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
   addEventListener(ev, () => { timeScale = 1; }));
@@ -86,10 +90,14 @@ cv.addEventListener('contextmenu', e => e.preventDefault());
 $('#segMode').addEventListener('click', e => {
   const b = e.target.closest('button'); if (b) setMode(b.dataset.m);
 });
+$('#misRow').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  setMission(+b.dataset.mi); refreshMissionBtns(); updateHud();
+});
 $('#segAlgo').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   algo = b.dataset.a; setSeg($('#segAlgo'), algo === 'qlearn' ? 0 : 1);
-  if (algo === 'sarsa') env.a = chooseAction(stateOf(env), curEps());
+  if (algo === 'sarsa') env.a = behaviorAction(stateOf(env), curEps());
   brainInfo();
 });
 btnStart.addEventListener('click', () => {
@@ -126,7 +134,7 @@ const SLIDERS = [
     inp.addEventListener('input', () => { params[key] = +inp.value; out.textContent = fmt(params[key]); });
   }
 }
-for (const [id, key] of [['tglPol', 'pol'], ['tglHeat', 'heat'], ['tglTrail', 'trail']]) {
+for (const [id, key] of [['tglPol', 'pol'], ['tglHeat', 'heat'], ['tglTrail', 'trail'], ['tglBuck', 'buck']]) {
   const b = document.getElementById(id);
   b.classList.toggle('on', flags[key]);
   b.addEventListener('click', () => { flags[key] = !flags[key]; b.classList.toggle('on', flags[key]); });
@@ -157,15 +165,22 @@ addEventListener('pagehide', () => { saveBrain(); engineSet(false); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { saveBrain(); engineSet(false); }
 });
-const splash = $('#splash');
+const splash = $('#splash'), coach = $('#coach');
 splash.addEventListener('pointerdown', () => {
   splash.classList.add('gone'); S();
   setTimeout(() => splash.remove(), 600);
+  try { if (!localStorage.getItem('ll-coach')) coach.classList.add('show'); } catch (e) {}
+}, { once: true });
+coach.addEventListener('pointerdown', () => {
+  coach.classList.remove('show');
+  try { localStorage.setItem('ll-coach', '1'); } catch (e) {}
 }, { once: true });
 
+applyMission(mission);
 const hadSave = loadBrain();
 setSeg($('#segAlgo'), algo === 'qlearn' ? 0 : 1);
 setSeg($('#segMode'), 0);
+refreshMissionBtns();
 $('#btnSound').classList.toggle('on', soundOn);
 for (const [key] of SLIDERS) {
   const i = $('#pr_' + key);
