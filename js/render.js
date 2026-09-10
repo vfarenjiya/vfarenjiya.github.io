@@ -1,5 +1,5 @@
 'use strict';
-/* ================= WORLD GEOMETRY ================= */
+/* ================= WORLD GEOMETRY (with UI safe insets) ================= */
 function cellCenter(c, r) { return { x: L.ox + (c + 0.5) * L.cell, y: L.oy + (r + 0.5) * L.cell }; }
 const anchor = cellCenter;
 
@@ -8,9 +8,11 @@ function layout() {
   if (!W || !H) return;
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   cv.width = W * DPR; cv.height = H * DPR;
-  L.cell = Math.min(W / COLS, H / ROWS);
+  const topInset = 66, bottomInset = 100;           // HUD pills / dock clearance
+  const availH = Math.max(200, H - topInset - bottomInset);
+  L.cell = Math.min(W / COLS, availH / ROWS);
   L.ox = (W - L.cell * COLS) / 2;
-  L.oy = (H - L.cell * ROWS) / 2;
+  L.oy = topInset + Math.max(0, (availH - L.cell * ROWS) / 2);
   L.w = W; L.h = H; L.gy = L.oy + L.cell * ROWS;
   if (!view.ready) { const a = anchor(0, 0); view.x = a.x; view.y = a.y; view.ready = true; }
   view.thrust = 0; view.tilt = 0;
@@ -67,7 +69,6 @@ function drawSpace(g, t, dt) {
   const sky = g.createLinearGradient(0, 0, 0, L.h);
   sky.addColorStop(0, '#04070f'); sky.addColorStop(.55, '#0a1226'); sky.addColorStop(1, '#141d33');
   g.fillStyle = sky; g.fillRect(0, 0, L.w, L.h);
-  // stars
   for (const s of STARS) {
     s.x += s.sp * dt; if (s.x > 1.02) s.x = -.02;
     s.ph += dt * (1 + s.s);
@@ -80,7 +81,7 @@ function drawSpace(g, t, dt) {
     particles.push({ x: L.w * (.3 + Math.random() * .6), y: L.h * Math.random() * .3,
       vx: -260, vy: 110, life: .55, age: 0, size: 1.8, col: '#ffffff', grav: 0 });
   // Earth
-  const ex = L.w * .82, ey = L.h * .13, er = L.cell * .5;
+  const ex = L.w * .82, ey = L.h * .10, er = L.cell * .45;
   g.save(); g.shadowColor = 'rgba(110,180,255,.7)'; g.shadowBlur = er * .9;
   const eg = g.createRadialGradient(ex - er * .3, ey - er * .3, er * .1, ex, ey, er);
   eg.addColorStop(0, '#9fd4ff'); eg.addColorStop(.55, '#3f86e0'); eg.addColorStop(1, '#1c4fa0');
@@ -132,7 +133,6 @@ function drawLavaTube(g, t) {
     lg.addColorStop(.5, `rgba(255,140,50,${hot})`);
     lg.addColorStop(1, `rgba(214,48,20,${hot})`);
     rr(g, x + cs * .22, y + 2, cs * .56, cs - 4, cs * .1); g.fillStyle = lg; g.fill(); g.restore();
-    // glowing cracks
     g.strokeStyle = `rgba(255,214,120,${.5 * hot})`; g.lineWidth = 1.6; g.lineCap = 'round';
     for (let k = 0; k < 2; k++) {
       g.beginPath();
@@ -145,7 +145,6 @@ function drawLavaTube(g, t) {
       g.stroke();
     }
   }
-  // blinking warning beacons at tube mouth
   const blink = (t % 1) < .5;
   for (const by of [L.oy + cs * .9, L.oy + (ROWS - 1) * cs - cs * .1]) {
     g.fillStyle = blink ? '#ff4d4d' : 'rgba(255,77,77,.25)';
@@ -162,7 +161,6 @@ function drawLavaTube(g, t) {
 /* ================= MARKERS: START GATE & LANDING PAD ================= */
 function drawMarkers(g, t) {
   const cs = L.cell;
-  // orbital start gate
   { const p = anchor(0, 0);
     g.save(); g.translate(p.x, p.y);
     g.strokeStyle = 'rgba(53,224,200,.7)'; g.lineWidth = 2;
@@ -175,8 +173,7 @@ function drawMarkers(g, t) {
     g.beginPath(); g.arc(0, -cs * .68, cs * .045, 0, 7); g.fill();
     g.fillStyle = 'rgba(53,224,200,.9)'; g.font = `700 ${cs * .13}px Orbitron`;
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('START', 0, cs * .55); g.restore(); }
-  // landing pad (elevated platform on struts)
+    g.fillText('START', 0, cs * .58); g.restore(); }
   { const p = anchor(GOAL.c, GOAL.r);
     const py = p.y + cs * .3, pw = cs * 1.3;
     const gy = Math.max(L.gy, py + cs * .3);
@@ -190,11 +187,9 @@ function drawMarkers(g, t) {
       g.fillStyle = on ? '#ffc857' : 'rgba(255,200,87,.25)';
       g.beginPath(); g.arc(p.x - pw * .375 + i * pw * .25, py - cs * .02, cs * .04, 0, 7); g.fill();
     }
-    // beacon ring pulse
     const pu = (t % 1.4) / 1.4;
     g.strokeStyle = `rgba(53,224,200,${.6 * (1 - pu)})`; g.lineWidth = 2;
     g.beginPath(); g.ellipse(p.x, py, pw * .5 * pu + 4, cs * .16 * pu + 2, 0, 0, 7); g.stroke();
-    // flag
     g.strokeStyle = '#cfd6e4'; g.lineWidth = 2;
     g.beginPath(); g.moveTo(p.x + pw * .42, py); g.lineTo(p.x + pw * .42, py - cs * .5); g.stroke();
     const wv = Math.sin(t * 5) * cs * .04;
@@ -206,11 +201,10 @@ function drawMarkers(g, t) {
 
 /* ================= LANDER SPRITE ================= */
 function drawLander(g, x, y, s, tilt, thrust, fa, t) {
-  // thruster flame (world space, opposite to velocity)
   if (thrust > .06) {
     const len = s * (.3 + .45 * thrust) * (1 + .25 * Math.sin(t * 42));
     const ox = x - Math.sin(tilt) * s * .2, oy = y + Math.cos(tilt) * s * .24;
-    const dx = Math.sin(fa), dy = -Math.cos(fa);           // fa: 0 = flame down
+    const dx = Math.sin(fa), dy = -Math.cos(fa);
     const tx = ox + dx * len, ty = oy + dy * len;
     const fg = g.createLinearGradient(ox, oy, tx, ty);
     fg.addColorStop(0, 'rgba(255,255,255,.95)');
@@ -222,13 +216,11 @@ function drawLander(g, x, y, s, tilt, thrust, fa, t) {
     g.closePath(); g.fill();
   }
   g.save(); g.translate(x, y); g.rotate(tilt);
-  // legs
   g.strokeStyle = '#8b93a7'; g.lineWidth = s * .035; g.lineCap = 'round';
   for (const i of [-1, 1]) {
     g.beginPath(); g.moveTo(i * s * .12, s * .1); g.lineTo(i * s * .24, s * .26); g.stroke();
     g.beginPath(); g.moveTo(i * s * .24 - s * .06, s * .27); g.lineTo(i * s * .24 + s * .06, s * .27); g.stroke();
   }
-  // gold foil body
   const bg = g.createLinearGradient(0, -s * .05, 0, s * .2);
   bg.addColorStop(0, '#f0c25c'); bg.addColorStop(1, '#a8781f');
   g.fillStyle = bg;
@@ -237,13 +229,11 @@ function drawLander(g, x, y, s, tilt, thrust, fa, t) {
   g.strokeStyle = 'rgba(90,60,10,.5)'; g.lineWidth = 1;
   g.beginPath(); g.moveTo(-s * .18, s * .04); g.lineTo(s * .18, s * .04);
   g.moveTo(-s * .16, s * .11); g.lineTo(s * .16, s * .11); g.stroke();
-  // upper module + dome
   g.fillStyle = '#cfd6e4'; rr(g, -s * .12, -s * .2, s * .24, s * .17, s * .04); g.fill();
   const dg = g.createRadialGradient(-s * .03, -s * .26, s * .02, 0, -s * .24, s * .13);
   dg.addColorStop(0, '#d8fbf4'); dg.addColorStop(1, '#189b8a');
   g.fillStyle = dg; g.beginPath(); g.arc(0, -s * .24, s * .11, Math.PI, 0); g.fill();
   g.fillStyle = '#fff'; g.beginPath(); g.arc(0, -s * .26, s * .035, 0, 7); g.fill();
-  // antenna
   g.strokeStyle = '#8b93a7'; g.lineWidth = 1.5;
   g.beginPath(); g.moveTo(s * .1, -s * .2); g.lineTo(s * .16, -s * .36); g.stroke();
   g.fillStyle = (t % 1) < .5 ? '#ff4d4d' : 'rgba(255,77,77,.3)';
@@ -261,7 +251,6 @@ function render(dt, t) {
   drawMarkers(g, t);
   const cs = L.cell;
 
-  // faint altitude guides
   g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1; g.setLineDash([3, 8]);
   for (let r = 1; r < ROWS - 1; r++) {
     const y = L.oy + r * cs + cs * .5;
@@ -269,7 +258,6 @@ function render(dt, t) {
   }
   g.setLineDash([]);
 
-  // heatmap
   if (flags.heat) {
     let lo = Infinity, hi = -Infinity;
     for (let s = 0; s < STATES; s++) { const v = maxQ(s); if (v < lo) lo = v; if (v > hi) hi = v; }
@@ -280,7 +268,7 @@ function render(dt, t) {
       rr(g, L.ox + c * cs + 3, L.oy + r * cs + 3, cs - 6, cs - 6, cs * .15); g.fill();
     }
   }
-  // policy arrows (holo chevrons)
+  // policy arrows — subtle holo chevrons
   if (flags.pol) for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     if (cellType(c, r) === 'cliff') continue;
     const b = idxOf(c, r) * 4;
@@ -289,12 +277,11 @@ function render(dt, t) {
     me /= 4; if (mx - mn < 1e-9) continue;
     const p = cellCenter(c, r), conf = Math.min(1, (mx - me) / (mx - mn + 1e-9) + .35);
     g.save(); g.translate(p.x, p.y); g.rotate(ANG[ai]);
-    g.strokeStyle = `rgba(53,224,200,${.2 + .55 * conf})`; g.lineWidth = 2.5; g.lineCap = 'round';
-    const k = cs * .16;
+    g.strokeStyle = `rgba(53,224,200,${.10 + .35 * conf})`; g.lineWidth = 2; g.lineCap = 'round';
+    const k = cs * .12;
     g.beginPath(); g.moveTo(-k * .6, -k * .7); g.lineTo(k * .55, 0); g.lineTo(-k * .6, k * .7); g.stroke();
     g.restore();
   }
-  // exhaust trail
   if (flags.trail) { const n = trail.length;
     for (let i = 0; i < n; i++) { const p = cellCenter(trail[i].c, trail[i].r);
       g.fillStyle = `rgba(255,170,80,${(i / n) * .35})`;
@@ -311,23 +298,21 @@ function render(dt, t) {
   view.tilt += (clamp(vx / (cs * 14), -.38, .38) - view.tilt) * (1 - Math.exp(-dt * 10));
   if (view.thrust > .25 && Math.random() < .5 && particles.length < 220) {
     const fa = Math.atan2(-vx, vy);
-    particles.push({ x: view.x + Math.sin(fa) * cs * .3, y: view.y + Math.cos(fa) * -1 * -cs * .3,
+    particles.push({ x: view.x + Math.sin(fa) * cs * .3, y: view.y + Math.cos(fa) * cs * .3,
       vx: Math.sin(fa) * 60 + (Math.random() - .5) * 20, vy: Math.cos(fa) * 60,
       life: .35, age: 0, size: 1.8, col: 'rgba(255,190,110,.9)', grav: 0 });
   }
   if (!agentHidden) {
-    const fa = speed > 1 ? Math.atan2(-vx, vy) : Math.PI;   // flame opposite velocity
+    const fa = speed > 1 ? Math.atan2(-vx, vy) : Math.PI;
     const bob = view.thrust < .05 ? Math.sin(t * 3) * 1.5 : 0;
     drawLander(g, view.x, view.y + bob, cs, view.tilt, view.thrust, fa, t);
   }
-  // particles
   for (let i = particles.length - 1; i >= 0; i--) { const q = particles[i]; q.age += dt;
     if (q.age >= q.life) { particles.splice(i, 1); continue; }
     q.vy += q.grav * dt; q.x += q.vx * dt; q.y += q.vy * dt;
     g.globalAlpha = 1 - q.age / q.life; g.fillStyle = q.col;
     g.beginPath(); g.arc(q.x, q.y, q.size, 0, 7); g.fill(); }
   g.globalAlpha = 1;
-  // floaters
   g.textAlign = 'center'; g.font = `700 ${Math.max(12, cs * .28)}px Orbitron`;
   for (let i = floaters.length - 1; i >= 0; i--) { const f = floaters[i]; f.age += dt;
     if (f.age > 1) { floaters.splice(i, 1); continue; }
