@@ -3,28 +3,45 @@ const S_BUF = new Uint8Array(REPLAY * IN), S2_BUF = new Uint8Array(REPLAY * IN);
 const A_BUF = new Uint8Array(REPLAY), R_BUF = new Float32Array(REPLAY), D_BUF = new Uint8Array(REPLAY);
 let repLen = 0, repHead = 0;
 const tmpF = new Float32Array(IN);
-const S_TMP = new Uint8Array(IN), S2_TMP = new Uint8Array(IN);
+const S_TMP = new Float32Array(IN), S2_TMP = new Float32Array(IN);
 const tmpGrid = new Uint8Array(CELLS);
 const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 const phi = () => -PHI_K * manhattan(env.snake[0], env.food);
 
-/* Egocentric encode: board rotated so head sits at (EX,EY) facing "up".
-   ch0 body · ch1 head · ch2 food · ch3 wall.  fw = cells AHEAD, rc = cells RIGHT. */
+/* 12 egocentric features:
+   0-2  immediate block: straight / left / right
+   3-5  block within 3 cells: straight / left / right
+   6-7  signed food direction in head frame: forward / right
+   8    manhattan distance to food (norm)
+   9-11 free runway to wall: forward / right / left (norm) */
 function encode(out, sn, food) {
   out.fill(0); tmpGrid.fill(0);
   for (let i = 0; i < sn.length; i++) tmpGrid[sn[i].y * GW + sn[i].x] = 1;
-  const h = sn[0], f = DIRS[env.dir], r0 = -f[1], r1 = f[0];
-  for (let cy = 0; cy < GH; cy++) for (let cx = 0; cx < GW; cx++) {
-    const fw = EY - cy;                 // >0 means this ego cell is AHEAD of the head
-    const rc = cx - EX;                 // >0 means RIGHT of the head
-    const wx = h.x + f[0] * fw + r0 * rc;
-    const wy = h.y + f[1] * fw + r1 * rc;
-    const o = (cy * GW + cx) * CH;
-    if (wx < 0 || wx >= GW || wy < 0 || wy >= GH) { out[o + 3] = 1; continue; }
-    if (wx === h.x && wy === h.y) { out[o + 1] = 1; continue; }
-    if (tmpGrid[wy * GW + wx]) { out[o] = 1; continue; }
-    if (wx === food.x && wy === food.y) out[o + 2] = 1;
-  }
+  const h = sn[0], f = DIRS[env.dir];
+  const r0 = -f[1], r1 = f[0], l0 = -r0, l1 = -r1;
+  const blocked = (x, y) => (x < 0 || x >= GW || y < 0 || y >= GH) ? 1 : (tmpGrid[y * GW + x] ? 1 : 0);
+  const ray = (dx, dy, max) => {
+    let d = 0;
+    for (let k = 1; k <= max; k++) {
+      const x = h.x + dx * k, y = h.y + dy * k;
+      if (x < 0 || x >= GW || y < 0 || y >= GH) break;
+      d++;
+    }
+    return d;
+  };
+  out[0] = blocked(h.x + f[0], h.y + f[1]);
+  out[1] = blocked(h.x + l0, h.y + l1);
+  out[2] = blocked(h.x + r0, h.y + r1);
+  out[3] = ray(f[0], f[1], 3) < 3 ? 1 : 0;
+  out[4] = ray(l0, l1, 3) < 3 ? 1 : 0;
+  out[5] = ray(r0, r1, 3) < 3 ? 1 : 0;
+  const dfx = food.x - h.x, dfy = food.y - h.y;
+  out[6] = Math.max(-1, Math.min(1, (dfx * f[0] + dfy * f[1]) / 20));
+  out[7] = Math.max(-1, Math.min(1, (dfx * r0 + dfy * r1]) / 20));
+  out[8] = manhattan(h, food) / 30;
+  out[9] = ray(f[0], f[1], 18) / 18;
+  out[10] = ray(r0, r1, 12) / 12;
+  out[11] = ray(l0, l1, 12) / 12;
 }
 function placeFood() {
   do { env.food = { x: (Math.random() * GW) | 0, y: (Math.random() * GH) | 0 }; }
@@ -133,11 +150,11 @@ function endEpisode(greedy) {
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-const KEY = 'snake-dqn-v4';
+const KEY = 'snake-dqn-v5';
 function saveBrain(manual) {
   try {
     localStorage.setItem(KEY, JSON.stringify({
-      v: 4, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
+      v: 5, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
       updates, bestLen, net: online.serialize() }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
@@ -145,7 +162,7 @@ function saveBrain(manual) {
 function loadBrain() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
-    if (!d || d.v !== 4 || !d.net) return false;
+    if (!d || d.v !== 5 || !d.net) return false;
     online.load(d.net); target.copyFrom(online);
     Object.assign(params, d.params || {});
     episodes = d.episodes | 0; returns = d.returns || [];
