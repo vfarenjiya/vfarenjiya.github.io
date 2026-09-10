@@ -10,6 +10,7 @@ function updateHud() {
   lenVal.textContent = env.snake.length;
   foodVal.textContent = env.foods;
   stepVal.textContent = env.steps;
+  updVal.textContent = updates;
   if (mode === 'play') {
     runsVal.textContent = playRuns; playLastEl.textContent = playLast;
     playLastEl.style.color = 'var(--teal)';
@@ -20,7 +21,7 @@ function brainInfo() {
   const el = $('#brainInfo'); if (!el) return;
   el.textContent =
     'DQN  648→80→40→3 · ~55k params · replay ' + repLen + '/' + REPLAY + '\n' +
-    'updates ' + updates + ' · TD-loss ' + lastLoss.toFixed(3) + ' · target sync every ' + TARGET_EVERY + '\n' +
+    'updates ' + updates + ' · TD-loss ' + lastLoss.toFixed(3) + ' · best len ' + bestLen + '\n' +
     'ε     ' + curEps().toFixed(3) + '  =  ' + params.epsEnd + ' + ' + params.epsStart + '·e^(−ep/' + params.halfLife + ')\n' +
     'Q(s,a) ← Q + α_adam·[ r + γ·max Q_target(s′,·) − Q ]   γ=' + params.gamma;
 }
@@ -36,7 +37,10 @@ function frame(now) {
       let i = 0;
       while (i++ < n) {
         doStep(mode === 'play');
-        if (!mode_play_greedy() && env.steps % TRAIN_EVERY === 0) trainFromReplay();
+        if (mode === 'train' && repLen > WARM) {
+          trainFromReplay();
+          if (speedIdx >= 8) trainFromReplay();   // double updates at TURBO
+        }
         if (respawnT > 0) break;
       }
     }
@@ -46,7 +50,6 @@ function frame(now) {
   hudT += dt; if (hudT > .12) { hudT = 0; updateHud(); }
   requestAnimationFrame(frame);
 }
-const mode_play_greedy = () => mode === 'play';
 function toast(msg) {
   toastEl.textContent = msg; toastEl.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => toastEl.classList.remove('show'), 2200);
@@ -109,7 +112,7 @@ const SLIDERS = [
     inp.addEventListener('input', () => { params[key] = +inp.value; out.textContent = fmt(params[key]); });
   }
 }
-for (const [id, key] of [['tglGrid', 'grid'], ['tglGlow', 'glow']]) {
+for (const [id, key] of [['tglGrid', 'grid'], ['tglGlow', 'glow'], ['tglSense', 'sense']]) {
   const b = document.getElementById(id);
   b.classList.toggle('on', flags[key]);
   b.addEventListener('click', () => { flags[key] = !flags[key]; b.classList.toggle('on', flags[key]); });
