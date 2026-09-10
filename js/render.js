@@ -1,8 +1,8 @@
 'use strict';
 let shake = 0;
 const rings = [];
-function shakeIt(m) { shake = Math.max(shake, m); }
-function ring(cx, cy, col) { rings.push({ x: cx, y: cy, col, age: 0 }); }
+function shakeIt(m) { if (curSps() > 60) return; shake = Math.max(shake, m); }
+function ring(cx, cy, col) { if (curSps() > 60) return; rings.push({ x: cx, y: cy, col, age: 0 }); }
 
 function layout() {
   const W = innerWidth, H = innerHeight;
@@ -20,6 +20,7 @@ addEventListener('resize', layout);
 addEventListener('orientationchange', layout);
 
 function burst(cx, cy, col) {
+  if (curSps() > 60) return;
   if (particles.length > 200) return;
   const px = L.ox + (cx + .5) * L.cell, py = L.oy + (cy + .5) * L.cell;
   for (let i = 0; i < 18; i++) {
