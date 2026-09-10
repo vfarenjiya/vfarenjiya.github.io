@@ -1,15 +1,29 @@
 'use strict';
+/* ---- behavior policy: 50% tiny autopilot demo + 50% ε-greedy ----
+   Q-learning is OFF-policy: it may learn from any covering behavior. */
+function autopilot() {
+  const vdes = desiredVy(env.y);
+  if (env.vy < vdes - 0.3) return 2;                       // sinking too fast → burn
+  if (env.y < 60 && Math.abs(env.vx) > 1.0) return env.x > 50 ? 0 : 1;
+  if (env.y < 60 && Math.abs(env.x - 50) > 6) return env.x > 50 ? 0 : 1;
+  return 3;                                                // coast on profile
+}
+function behaviorAction(s, eps) {
+  if (Math.random() < GUIDED) return autopilot();
+  return chooseAction(s, eps);
+}
+
 function beginEpisode() {
-  env.x = 50 + (Math.random() * 8 - 4); env.y = 160;
+  env.x = 50 + (Math.random() * 8 - 4); env.y = 140;
   env.vx = (Math.random() - .5) * 1.2; env.vy = 0;
   env.steps = 0; env.ret = 0; env.mainOn = false; env.lat = 0;
-  env.a = algo === 'sarsa' ? chooseAction(stateOf(env), curEps()) : 0;
+  env.a = algo === 'sarsa' ? behaviorAction(stateOf(env), curEps()) : 0;
   trail.length = 0; agentHidden = false;
 }
 function doStep(greedy) {
   const s = stateOf(env), eps = greedy ? 0 : curEps();
-  const a = (algo === 'sarsa' && !greedy) ? env.a : chooseAction(s, eps);
-  const p0 = phi(env);
+  const a = greedy ? chooseAction(s, 0)
+        : (algo === 'sarsa' ? env.a : behaviorAction(s, eps));
   let ax = 0, ay = 0; env.mainOn = false; env.lat = 0;
   if (a === 0) { ax = -WORLD.aLat; env.lat = -1; }
   else if (a === 1) { ax = WORLD.aLat; env.lat = 1; }
@@ -19,8 +33,10 @@ function doStep(greedy) {
   env.x += env.vx * WORLD.dt;
   env.y += env.vy * WORLD.dt;
   env.steps++;
-  const velPenalty = -0.02 * Math.max(0, -env.vy - 6) * (env.y < 40 ? 1 : 0);
-  let reward = WORLD.rStep + velPenalty + WORLD.shapeK * (params.gamma * phi(env) - p0);
+  /* dense reference-tracking reward: correct action = best IMMEDIATE reward */
+  const errV = Math.min(Math.abs(env.vy - desiredVy(env.y)), 4);
+  const errX = Math.min(Math.abs(env.x - 50) * 0.12 + (env.y < 40 ? Math.abs(env.vx) : 0) * 0.5, 3);
+  let reward = -0.06 * (errV / 4) - 0.03 * (errX / 3) - 0.02;
   let result = '';
   if (env.y <= 0) {
     env.y = 0;
@@ -34,7 +50,7 @@ function doStep(greedy) {
   let target;
   if (terminal) target = reward;
   else if (algo === 'qlearn' || greedy) target = reward + params.gamma * maxQ(ns);
-  else { const na = chooseAction(ns, eps); target = reward + params.gamma * Q[ns * 4 + na]; env.a = na; }
+  else { const na = behaviorAction(ns, eps); target = reward + params.gamma * Q[ns * 4 + na]; env.a = na; }
   Q[s * 4 + a] += params.alpha * (target - Q[s * 4 + a]);
 
   trail.push({ x: env.x, y: env.y }); if (trail.length > 140) trail.shift();
@@ -67,11 +83,11 @@ function endEpisode(result, greedy) {
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-const KEY = 'lunar-lander-v2';
+const KEY = 'lunar-lander-v3';
 function saveBrain(manual) {
   try {
     localStorage.setItem(KEY, JSON.stringify({
-      v: 2, algo, params: { ...params }, episodes,
+      v: 3, algo, params: { ...params }, episodes,
       returns: returns.slice(-300), bestAvg, Q: Array.from(Q), flags, soundOn }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
@@ -79,7 +95,7 @@ function saveBrain(manual) {
 function loadBrain() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
-    if (!d || d.v !== 2 || !Array.isArray(d.Q) || d.Q.length !== STATES * 4) return false;
+    if (!d || d.v !== 3 || !Array.isArray(d.Q) || d.Q.length !== STATES * 4) return false;
     Q = Float64Array.from(d.Q); algo = d.algo || 'qlearn';
     Object.assign(params, d.params || {});
     episodes = d.episodes | 0; returns = d.returns || [];
