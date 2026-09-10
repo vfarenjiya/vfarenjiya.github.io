@@ -1,5 +1,4 @@
 'use strict';
-/* ================= EPISODES & PHYSICS ================= */
 function beginEpisode() {
   env.x = 50 + (Math.random() * 8 - 4); env.y = 160;
   env.vx = (Math.random() - .5) * 1.2; env.vy = 0;
@@ -12,15 +11,16 @@ function doStep(greedy) {
   const a = (algo === 'sarsa' && !greedy) ? env.a : chooseAction(s, eps);
   const p0 = phi(env);
   let ax = 0, ay = 0; env.mainOn = false; env.lat = 0;
-  if (a === 0) { ax = -WORLD.aLat; env.lat = -1; }        // RCS left
-  else if (a === 1) { ax = WORLD.aLat; env.lat = 1; }     // RCS right
-  else if (a === 2) { ay = WORLD.aMain; env.mainOn = true; } // main engine
+  if (a === 0) { ax = -WORLD.aLat; env.lat = -1; }
+  else if (a === 1) { ax = WORLD.aLat; env.lat = 1; }
+  else if (a === 2) { ay = WORLD.aMain; env.mainOn = true; }
   env.vx += ax * WORLD.dt;
-  env.vy += (ay - WORLD.g) * WORLD.dt;                    // Moon gravity
+  env.vy += (ay - WORLD.g) * WORLD.dt;
   env.x += env.vx * WORLD.dt;
   env.y += env.vy * WORLD.dt;
   env.steps++;
-  let reward = WORLD.rStep + WORLD.shapeK * (params.gamma * phi(env) - p0); // potential-based shaping
+  const velPenalty = -0.02 * Math.max(0, -env.vy - 6) * (env.y < 40 ? 1 : 0);
+  let reward = WORLD.rStep + velPenalty + WORLD.shapeK * (params.gamma * phi(env) - p0);
   let result = '';
   if (env.y <= 0) {
     env.y = 0;
@@ -31,7 +31,6 @@ function doStep(greedy) {
   } else if (env.x < -2 || env.x > WORLD.w + 2) { result = 'cliff'; reward += WORLD.rCrash; }
   else if (env.steps >= WORLD.maxSteps) { result = 'timeout'; reward += WORLD.rCrash; }
   const terminal = !!result, ns = stateOf(env);
-  /* TD update — Q-learning: r + γ max Q(s′,·)   |   SARSA: r + γ Q(s′,a′) */
   let target;
   if (terminal) target = reward;
   else if (algo === 'qlearn' || greedy) target = reward + params.gamma * maxQ(ns);
@@ -68,12 +67,11 @@ function endEpisode(result, greedy) {
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-/* ================= PERSISTENCE ================= */
-const KEY = 'lunar-lander-v1';
+const KEY = 'lunar-lander-v2';
 function saveBrain(manual) {
   try {
     localStorage.setItem(KEY, JSON.stringify({
-      v: 1, algo, params: { ...params }, episodes,
+      v: 2, algo, params: { ...params }, episodes,
       returns: returns.slice(-300), bestAvg, Q: Array.from(Q), flags, soundOn }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
@@ -81,7 +79,7 @@ function saveBrain(manual) {
 function loadBrain() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
-    if (!d || d.v !== 1 || !Array.isArray(d.Q) || d.Q.length !== STATES * 4) return false;
+    if (!d || d.v !== 2 || !Array.isArray(d.Q) || d.Q.length !== STATES * 4) return false;
     Q = Float64Array.from(d.Q); algo = d.algo || 'qlearn';
     Object.assign(params, d.params || {});
     episodes = d.episodes | 0; returns = d.returns || [];
