@@ -129,3 +129,11 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 @keyframes spin{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
 body.blocked #rotate{display:grid}
 body.blocked #cv,body.blocked #hud,body.blocked #dock{filter:blur(6px);pointer-events:none}
+
+#dsky{position:fixed;left:10px;bottom:calc(104px + env(safe-area-inset-bottom));z-index:20;
+  background:rgba(3,9,6,.85);border:1px solid #274a34;border-radius:10px;padding:6px 10px;
+  box-shadow:0 0 14px rgba(60,255,140,.18);min-width:86px}
+#dsky .dr{display:flex;justify-content:space-between;gap:12px;font-size:9px;line-height:1.6}
+#dsky span{color:#3f7a52;letter-spacing:1.5px;font-weight:700}
+#dsky b{color:#7dffa8;font-size:12px;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 7px rgba(125,255,168,.65)}
