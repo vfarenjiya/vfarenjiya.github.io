@@ -3,6 +3,7 @@ const S_BUF = new Uint8Array(REPLAY * IN), S2_BUF = new Uint8Array(REPLAY * IN);
 const A_BUF = new Uint8Array(REPLAY), R_BUF = new Float32Array(REPLAY), D_BUF = new Uint8Array(REPLAY);
 let repLen = 0, repHead = 0;
 const tmpF = new Float32Array(IN);
+const S_TMP = new Uint8Array(IN), S2_TMP = new Uint8Array(IN);
 const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 const phi = () => -PHI_K * manhattan(env.snake[0], env.food);
 
@@ -22,7 +23,7 @@ function encode(out, sn, food) {
   const h = sn[0]; out[(h.y * GW + h.x) * CH + 1] = 1;
   out[(food.y * GW + food.x) * CH + 2] = 1;
 }
-function stepEnv(a, greedy) {
+function stepEnv(greedy) {
   const s = S_TMP; encode(s, env.snake, env.food);
   const eps = greedy ? 0 : curEps();
   let act;
@@ -38,23 +39,26 @@ function stepEnv(a, greedy) {
   const wall = nh.x < 0 || nh.x >= GW || nh.y < 0 || nh.y >= GH;
   const self = env.snake.some((p, i) => i < env.snake.length - 1 && p.x === nh.x && p.y === nh.y);
   env.prev = env.snake.map(p => ({ ...p }));
-  if (wall || self) { done = true; reward = R_DIE; burst(nh.x, nh.y, '#ff5a4d'); if (curSps() <= 30) sSplash(); }
-  else {
+  if (wall || self) {
+    done = true; reward = R_DIE;
+    burst(nh.x, nh.y, '#ff5a4d'); ring(nh.x, nh.y, '#ff5a4d'); shakeIt(1);
+    if (curSps() <= 30) sSplash();
+  } else {
     env.snake.unshift(nh);
     if (nh.x === env.food.x && nh.y === env.food.y) {
       reward += R_EAT; env.foods++; env.noEat = 0;
-      burst(nh.x, nh.y, '#ffd166'); if (curSps() <= 30) sWin();
+      burst(nh.x, nh.y, '#ffd166'); ring(nh.x, nh.y, '#ffd166'); shakeIt(.25);
+      if (curSps() <= 30) sWin();
       placeFood();
     } else { env.snake.pop(); env.noEat++; }
     if (env.noEat > NO_EAT_LIMIT) { done = true; reward += R_TIMEOUT; }
-    if (!done) reward += params.gamma * phi() - p0;      // potential-based shaping
+    if (!done) reward += params.gamma * phi() - p0;
   }
   env.steps++; env.ret += reward; env.done = done; env.stepAt = performance.now();
   const s2 = S2_TMP; encode(s2, env.snake, env.food);
   pushReplay(s, act, reward, s2, done);
   return done;
 }
-const S_TMP = new Uint8Array(IN), S2_TMP = new Uint8Array(IN);
 function pushReplay(s, a, r, s2, d) {
   const i = repHead;
   S_BUF.set(s, i * IN); S2_BUF.set(s2, i * IN);
@@ -64,10 +68,9 @@ function pushReplay(s, a, r, s2, d) {
 }
 function trainFromReplay() {
   if (repLen < WARM) return;
-  const batch = [];
-  for (let k = 0; k < BATCH; k++) batch.push((Math.random() * repLen) | 0);
   let loss = 0;
-  for (const idx of batch) {
+  for (let k = 0; k < BATCH; k++) {
+    const idx = (Math.random() * repLen) | 0;
     const o = idx * IN;
     const x = tmpF; for (let i = 0; i < IN; i++) x[i] = S_BUF[o + i];
     const x2 = new Float32Array(IN); for (let i = 0; i < IN; i++) x2[i] = S2_BUF[o + i];
@@ -83,14 +86,20 @@ function trainFromReplay() {
   }
   online.adam(params.lr);
   lastLoss = loss / BATCH;
+  lossHist.push(lastLoss); if (lossHist.length > 400) lossHist.shift();
   updates++;
   if (updates % TARGET_EVERY === 0) target.copyFrom(online);
+  chartDirty = true;
 }
 function doStep(greedy) {
-  const done = stepEnv(0, greedy);
+  const done = stepEnv(greedy);
   if (done) endEpisode(greedy);
 }
 function endEpisode(greedy) {
+  const len = env.snake.length;
+  if (len > bestLen) bestLen = len;
+  for (const [m, txt] of [[10, '🥉 LEN-10 CLUB'], [20, '🥈 LEN-20 CLUB'], [50, '🥇 LEN-50 CLUB']])
+    if (len === m) { toast(txt); ring(env.snake[0].x, env.snake[0].y, '#ffd166'); }
   if (!greedy) {
     returns.push(env.ret); if (returns.length > 900) returns.splice(0, returns.length - 600);
     episodes++;
@@ -105,36 +114,38 @@ function endEpisode(greedy) {
     playRuns++; playLast = env.foods + ' food';
     playHint.textContent = episodes === 0
       ? 'Spinning in circles? The net is untrained — switch to TRAIN first.'
-      : 'DQN trained on ' + episodes + ' episodes · ' + updates + ' gradient updates.';
+      : 'DQN trained on ' + episodes + ' episodes · ' + updates + ' updates · best len ' + bestLen + '.';
   }
   respawnT = curSps() <= 30 ? 0.45 : 0.02;
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-const KEY = 'snake-dqn-v1';
+const KEY = 'snake-dqn-v2';
 function saveBrain(manual) {
   try {
     localStorage.setItem(KEY, JSON.stringify({
-      v: 1, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
-      updates, net: online.serialize() }));
+      v: 2, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
+      updates, bestLen, net: online.serialize() }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
 }
 function loadBrain() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
-    if (!d || d.v !== 1 || !d.net) return false;
+    if (!d || d.v !== 2 || !d.net) return false;
     online.load(d.net); target.copyFrom(online);
     Object.assign(params, d.params || {});
     episodes = d.episodes | 0; returns = d.returns || [];
-    bestAvg = (d.bestAvg == null ? null : d.bestAvg); updates = d.updates | 0;
+    bestAvg = (d.bestAvg == null ? null : d.bestAvg);
+    updates = d.updates | 0; bestLen = d.bestLen | 0;
     return true;
   } catch (e) { return false; }
 }
 function resetBrain() {
-  Object.assign(online, new DQN()); online.t = 0;
-  const f = new DQN(); online.copyFrom(f); target.copyFrom(online);
-  episodes = 0; returns.length = 0; bestAvg = null; congrat = false; updates = 0;
+  online.l1 = layer(IN, H1); online.l2 = layer(H1, H2); online.l3 = layer(H2, NA); online.t = 0;
+  target.copyFrom(online);
+  episodes = 0; returns.length = 0; bestAvg = null; congrat = false;
+  updates = 0; lastLoss = 0; bestLen = 0; lossHist.length = 0;
   repLen = 0; repHead = 0; playRuns = 0; playLast = '—';
   try { localStorage.removeItem(KEY); } catch (e) {}
   beginEpisode(); chartDirty = true; toast('BRAIN WIPED');
