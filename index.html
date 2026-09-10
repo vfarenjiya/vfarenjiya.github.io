@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<meta name="description" content="A reinforcement-learning Apollo-style lunar lander: watch the AI learn to touch down softly. No humans at the sticks.">
+<meta name="description" content="A reinforcement-learning Apollo-style lunar lander: watch the AI learn to touch down softly across 3 missions. No humans at the sticks.">
 <title>Lunar Lander RL</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -53,6 +53,14 @@
 <div id="scrim"></div>
 <div id="sheet">
   <div id="handle"></div>
+
+  <div class="viewrow" id="misRow">
+    <span class="cap">MISSION</span>
+    <button class="tgl on" data-mi="0">M1</button>
+    <button class="tgl" data-mi="1">M2</button>
+    <button class="tgl" data-mi="2">M3</button>
+  </div>
+
   <div id="chartWrap">
     <div id="chartHead"><span class="l">RETURN PER EPISODE</span><span class="r" id="bestVal">BEST —</span></div>
     <canvas id="chartCv"></canvas>
@@ -88,6 +96,7 @@
     <button class="tgl" id="tglPol">POLICY</button>
     <button class="tgl" id="tglHeat">VALUE</button>
     <button class="tgl on" id="tglTrail">TRAIL</button>
+    <button class="tgl" id="tglBuck">BUCKETS</button>
   </div>
   <div id="brainInfo" class="note"></div>
 </div>
@@ -97,6 +106,13 @@
   <h1>LUNAR<span>LANDER</span></h1>
   <p class="sub">NO HUMANS AT THE STICKS — THE AI LEARNS TO FLY</p>
   <div class="tap">TAP TO START</div>
+</div></div>
+
+<div id="coach"><div>
+  <p>▶ <b>TRAIN</b> — the AI flies and learns</p>
+  <p>⚙ <b>LAB</b> — missions, brains, charts</p>
+  <p>✋ <b>HOLD THE SKY</b> — slow-motion</p>
+  <div class="tap">GOT IT</div>
 </div></div>
 
 <div id="toast"></div>
