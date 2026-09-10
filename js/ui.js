@@ -10,7 +10,8 @@ function updateHud() {
   lenVal.textContent = env.snake.length;
   foodVal.textContent = env.foods;
   stepVal.textContent = env.steps;
-  updVal.textContent = updates;
+  
+  updVal.textContent = updates + '·' + env.foods;
   if (mode === 'play') {
     runsVal.textContent = playRuns; playLastEl.textContent = playLast;
     playLastEl.style.color = 'var(--teal)';
