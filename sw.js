@@ -1,6 +1,7 @@
-const VERSION = 'cliff-walker-v1';
+const VERSION = 'cliff-walker-v2';
 const FONTS = 'cliff-walker-fonts-v1';
-const CORE = ['./', './index.html', './manifest.json', './icon.svg', './icon-maskable.svg'];
+const CORE = ['./', './index.html', './style.css', './app.js',
+              './manifest.json', './icon.svg', './icon-maskable.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
