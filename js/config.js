@@ -1,14 +1,12 @@
 'use strict';
 const GW = 12, GH = 18, CELLS = GW * GH;
-const CH = 4, IN = CELLS * CH;             // body / head / food / wall  (egocentric frame)
-const H1 = 80, H2 = 40, NA = 3;
-const REPLAY = 20000, WARM = 400, BATCH = 2, TRAIN_EVERY = 1, TARGET_EVERY = 300;
+const IN = 12, H1 = 32, H2 = 16, NA = 3;      // ego-feature vector → tiny fast net
+const REPLAY = 20000, WARM = 300, BATCH = 4, TRAIN_EVERY = 1, TARGET_EVERY = 200;
 const R_EAT = 10, R_DIE = -10, R_TIMEOUT = -5, NO_EAT_LIMIT = 150;
 const PHI_K = 0.1;
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-const EX = 6, EY = 12;                     // fixed head position inside the egocentric window
 
-const params = { lr: 0.0015, gamma: 0.95, epsStart: 1.0, epsEnd: 0.06, halfLife: 120 };
+const params = { lr: 0.003, gamma: 0.95, epsStart: 1.0, epsEnd: 0.05, halfLife: 60 };
 let episodes = 0, returns = [], bestAvg = null, congrat = false;
 let updates = 0, lastLoss = 0, bestLen = 0;
 const lossHist = [];
