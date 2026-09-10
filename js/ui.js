@@ -1,5 +1,5 @@
 'use strict';
-let hudT = 0;
+let hudT = 0, timeScale = 1, lastLat = 0;
 function updateHud() {
   epVal.textContent = episodes;
   const e = mode === 'play' ? 0 : curEps();
@@ -19,10 +19,21 @@ function updateHud() {
     runsVal.textContent = playRuns; playLastEl.textContent = playLast;
     playLastEl.style.color = playLast.startsWith('L') ? 'var(--teal)' : 'var(--red)';
   }
+  brainInfo();
+}
+function brainInfo() {
+  const el = $('#brainInfo'); if (!el) return;
+  el.textContent =
+    'MDP   432 states × 4 actions = 1,728 Q-values\n' +
+    'ε     ' + curEps().toFixed(3) + '  =  ' + params.epsEnd + ' + ' + params.epsStart + '·e^(−ep/' + params.halfLife + ')\n' +
+    (algo === 'qlearn'
+      ? 'Q(s,a) ← Q + α·[ r + γ·max Q(s′,·) − Q ]   α=' + params.alpha + ' γ=' + params.gamma + '\noff-policy: targets the greedy action'
+      : 'Q(s,a) ← Q + α·[ r + γ·Q(s′,a′) − Q ]      α=' + params.alpha + ' γ=' + params.gamma + '\non-policy: targets the action actually taken');
 }
 let lastT = performance.now();
 function frame(now) {
-  const dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  let dt = Math.min(.05, (now - lastT) / 1000); lastT = now;
+  dt *= timeScale;
   if (running) {
     if (respawnT > 0) { respawnT -= dt; if (respawnT <= 0) beginEpisode(); }
     else {
@@ -31,8 +42,12 @@ function frame(now) {
       while (n-- > 0) { doStep(mode === 'play'); if (respawnT > 0) break; }
     }
   }
-  
   try { render(dt, now / 1000); } catch (e) { console.error('render:', e); }
+  engineSet(soundOn && running && view.thrust > .4);
+  if (env.lat !== lastLat) {
+    if (env.lat !== 0 && soundOn && curSps() <= 30) sRcs();
+    lastLat = env.lat;
+  }
   if (chartDirty) { drawChart(); chartDirty = false; }
   hudT += dt; if (hudT > .12) { hudT = 0; updateHud(); }
   requestAnimationFrame(frame);
@@ -62,6 +77,12 @@ function setMode(m) {
   if (m === 'play') running = true;
   acc = 0; respawnT = 0; beginEpisode(); updateTransport(); updateHud();
 }
+/* slow-mo: hold the sky */
+cv.addEventListener('pointerdown', () => { if (running && curSps() <= 30) timeScale = .35; });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+  addEventListener(ev, () => { timeScale = 1; }));
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
 $('#segMode').addEventListener('click', e => {
   const b = e.target.closest('button'); if (b) setMode(b.dataset.m);
 });
@@ -69,10 +90,11 @@ $('#segAlgo').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   algo = b.dataset.a; setSeg($('#segAlgo'), algo === 'qlearn' ? 0 : 1);
   if (algo === 'sarsa') env.a = chooseAction(stateOf(env), curEps());
+  brainInfo();
 });
 btnStart.addEventListener('click', () => {
   S(); running = !running;
-  if (!running && mode === 'train') saveBrain(true);
+  if (!running) { engineSet(false); if (mode === 'train') saveBrain(true); }
   updateTransport();
 });
 $('#btnGear').addEventListener('click', () => openSheet(!sheet.classList.contains('open')));
@@ -110,7 +132,8 @@ for (const [id, key] of [['tglPol', 'pol'], ['tglHeat', 'heat'], ['tglTrail', 't
   b.addEventListener('click', () => { flags[key] = !flags[key]; b.classList.toggle('on', flags[key]); });
 }
 $('#btnSound').addEventListener('click', function () {
-  soundOn = !soundOn; this.classList.toggle('on', soundOn); S();
+  soundOn = !soundOn; this.classList.toggle('on', soundOn);
+  S(); if (!soundOn) engineSet(false);
 });
 $('#btnFS').addEventListener('click', async () => {
   try { await document.documentElement.requestFullscreen(); await screen.orientation.lock('portrait'); } catch (e) {}
@@ -130,8 +153,10 @@ function checkOri() {
 }
 addEventListener('resize', checkOri);
 addEventListener('orientationchange', checkOri);
-addEventListener('pagehide', () => saveBrain());
-document.addEventListener('visibilitychange', () => { if (document.hidden) saveBrain(); });
+addEventListener('pagehide', () => { saveBrain(); engineSet(false); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { saveBrain(); engineSet(false); }
+});
 const splash = $('#splash');
 splash.addEventListener('pointerdown', () => {
   splash.classList.add('gone'); S();
@@ -147,7 +172,7 @@ for (const [key] of SLIDERS) {
   if (i) { i.value = params[key]; $('#pv_' + key).textContent = (+params[key]).toFixed(key === 'halfLife' ? 0 : 2); }
 }
 if (hadSave && episodes > 0) toast('SAVED BRAIN LOADED · EP ' + episodes);
-layout(); beginEpisode(); updateTransport(); updateHud(); checkOri();
+layout(); beginEpisode(); updateTransport(); updateHud(); checkOri(); brainInfo();
 requestAnimationFrame(frame);
 if ('serviceWorker' in navigator)
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
