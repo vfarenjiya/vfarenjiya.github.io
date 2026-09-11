@@ -1,46 +1,35 @@
 'use strict';
-const S_BUF = new Float32Array(REPLAY * IN), S2_BUF = new Float32Array(REPLAY * IN);
-const A_BUF = new Uint8Array(REPLAY), R_BUF = new Float32Array(REPLAY), D_BUF = new Uint8Array(REPLAY);
-let repLen = 0, repHead = 0;
-const tmpF = new Float32Array(IN);
-const S_TMP = new Float32Array(IN), S2_TMP = new Float32Array(IN);
-const tmpGrid = new Uint8Array(CELLS);
+/* ============ TABULAR Q-LEARNING SNAKE ============
+   State = 72-cell egocentric abstraction:
+     3 danger bits (straight/left/right blocked)
+     × 3 food-forward levels (behind / aligned / ahead)
+     × 3 food-right levels   (left / aligned / right)
+   Actions = 3 relative (straight, left, right).
+   Off-policy Q-learning with greedy target, online updates. */
+const NST = 72;
+let Q = new Float64Array(NST * 3);
+const visitedSt = new Uint8Array(NST);
+let visitedN = 0, tdErr = 0;
+const repLen = REPLAY;                 // keeps the ui loop condition happy; unused otherwise
 const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-/* 12 egocentric features:
-   0-2  immediate block: straight / left / right
-   3-5  block within 3 cells: straight / left / right
-   6-7  signed food direction in head frame: forward / right
-   8    manhattan distance to food (norm)
-   9-11 free runway to wall: forward / right / left (norm) */
-function encode(out, sn, food) {
-  out.fill(0); tmpGrid.fill(0);
-  for (let i = 0; i < sn.length; i++) tmpGrid[sn[i].y * GW + sn[i].x] = 1;
-  const h = sn[0], f = DIRS[env.dir];
+function blockedCell(sn, x, y) {
+  if (x < 0 || x >= GW || y < 0 || y >= GH) return true;
+  for (let i = 0; i < sn.length - 1; i++) if (sn[i].x === x && sn[i].y === y) return true;
+  return false;
+}
+function stateIdx(sn, food, dir) {
+  const h = sn[0], f = DIRS[dir];
   const r0 = -f[1], r1 = f[0], l0 = -r0, l1 = -r1;
-  const blocked = (x, y) => (x < 0 || x >= GW || y < 0 || y >= GH) ? 1 : (tmpGrid[y * GW + x] ? 1 : 0);
-  const ray = (dx, dy, max) => {
-    let d = 0;
-    for (let k = 1; k <= max; k++) {
-      const x = h.x + dx * k, y = h.y + dy * k;
-      if (x < 0 || x >= GW || y < 0 || y >= GH) break;
-      d++;
-    }
-    return d;
-  };
-  out[0] = blocked(h.x + f[0], h.y + f[1]);
-  out[1] = blocked(h.x + l0, h.y + l1);
-  out[2] = blocked(h.x + r0, h.y + r1);
-  out[3] = ray(f[0], f[1], 3) < 3 ? 1 : 0;
-  out[4] = ray(l0, l1, 3) < 3 ? 1 : 0;
-  out[5] = ray(r0, r1, 3) < 3 ? 1 : 0;
+  const d = (blockedCell(sn, h.x + f[0], h.y + f[1]) ? 4 : 0)
+          + (blockedCell(sn, h.x + l0, h.y + l1) ? 2 : 0)
+          + (blockedCell(sn, h.x + r0, h.y + r1) ? 1 : 0);
   const dfx = food.x - h.x, dfy = food.y - h.y;
-  out[6] = Math.max(-1, Math.min(1, (dfx * f[0] + dfy * f[1]) / 20));
-  out[7] = Math.max(-1, Math.min(1, (dfx * r0 + dfy * r1) / 20));
-  out[8] = manhattan(h, food) / 30;
-  out[9] = ray(f[0], f[1], 18) / 18;
-  out[10] = ray(r0, r1, 12) / 12;
-  out[11] = ray(l0, l1, 12) / 12;
+  const df = dfx * f[0] + dfy * f[1];
+  const dr = dfx * r0 + dfy * r1;
+  const lf = df > 0 ? 2 : (df < 0 ? 1 : 0);
+  const lr = dr > 0 ? 2 : (dr < 0 ? 1 : 0);
+  return d * 9 + lf * 3 + lr;
 }
 function placeFood() {
   do { env.food = { x: (Math.random() * GW) | 0, y: (Math.random() * GH) | 0 }; }
@@ -53,17 +42,24 @@ function beginEpisode() {
   placeFood(); env.stepAt = performance.now();
 }
 function stepEnv(greedy) {
-  const s = S_TMP; encode(s, env.snake, env.food);
+  const s = stateIdx(env.snake, env.food, env.dir);
   const eps = greedy ? 0 : curEps();
   let act;
-  if (Math.random() < eps) act = (Math.random() * NA) | 0;
-  else { const q = online.qValues(s); let b = -Infinity; act = 0;
-    for (let i = 0; i < NA; i++) if (q[i] > b) { b = q[i]; act = i; } }
+  if (Math.random() < eps) act = (Math.random() * 3) | 0;
+  else {
+    const b = s * 3; let best = -Infinity, picks = [];
+    for (let a = 0; a < 3; a++) {
+      const q = Q[b + a];
+      if (q > best + 1e-9) { best = q; picks = [a]; }
+      else if (Math.abs(q - best) <= 1e-9) picks.push(a);
+    }
+    act = picks[(Math.random() * picks.length) | 0];
+  }
   const nd = act === 0 ? env.dir : act === 1 ? (env.dir + 3) % 4 : (env.dir + 1) % 4;
   env.dir = nd;
   const h = env.snake[0];
   const nh = { x: h.x + DIRS[nd][0], y: h.y + DIRS[nd][1] };
-  const dPrev = manhattan(h, env.food);     // distance BEFORE this move
+  const dPrev = manhattan(h, env.food);
   let reward = 0, done = false;
   const wall = nh.x < 0 || nh.x >= GW || nh.y < 0 || nh.y >= GH;
   const self = env.snake.some((p, i) => i < env.snake.length - 1 && p.x === nh.x && p.y === nh.y);
@@ -81,47 +77,23 @@ function stepEnv(greedy) {
       placeFood();
     } else { env.snake.pop(); env.noEat++; }
     if (env.noEat > NO_EAT_LIMIT) { done = true; reward += R_TIMEOUT; }
-    // dense, non-telescoping reward: +0.4 per cell closer to food, -0.4 per cell farther
     const dNow = manhattan(env.snake[0], env.food);
-    reward += (dPrev - dNow) * 0.4;
+    reward += (dPrev - dNow) * 0.4;      // dense, non-telescoping pull toward food
   }
   env.steps++; env.ret += reward; env.done = done; env.stepAt = performance.now();
-  const s2 = S2_TMP; encode(s2, env.snake, env.food);
-  pushReplay(s, act, reward, s2, done);
+  /* ---- the one Bellman line ---- */
+  const ns = stateIdx(env.snake, env.food, env.dir);
+  let target;
+  if (done) target = reward;
+  else target = reward + params.gamma * Math.max(Q[ns * 3], Q[ns * 3 + 1], Q[ns * 3 + 2]);
+  const delta = target - Q[s * 3 + act];
+  tdErr = Math.abs(delta); lastLoss = tdErr;
+  Q[s * 3 + act] += (params.alpha || 0.3) * delta;
+  if (!visitedSt[s]) { visitedSt[s] = 1; visitedN++; }
+  updates++;
   return done;
 }
-function pushReplay(s, a, r, s2, d) {
-  const i = repHead;
-  S_BUF.set(s, i * IN); S2_BUF.set(s2, i * IN);
-  A_BUF[i] = a; R_BUF[i] = r; D_BUF[i] = d ? 1 : 0;
-  repHead = (repHead + 1) % REPLAY;
-  if (repLen < REPLAY) repLen++;
-}
-function trainFromReplay() {
-  if (repLen < WARM) return;
-  let loss = 0;
-  for (let k = 0; k < BATCH; k++) {
-    const idx = (Math.random() * repLen) | 0;
-    const o = idx * IN;
-    const x = tmpF; for (let i = 0; i < IN; i++) x[i] = S_BUF[o + i];
-    const x2 = new Float32Array(IN); for (let i = 0; i < IN; i++) x2[i] = S2_BUF[o + i];
-    const cache = online.forward(x, {});
-    const q = cache.q.slice();
-    let tgt;
-    if (D_BUF[idx]) tgt = R_BUF[idx];
-    else { const qt = target.qValues(x2); tgt = R_BUF[idx] + params.gamma * Math.max(qt[0], qt[1], qt[2]); }
-    const err = tgt - q[A_BUF[idx]];
-    loss += err * err;
-    const dq = new Float64Array(NA); dq[A_BUF[idx]] = err;
-    online.backward(cache, dq);
-  }
-  online.adam(params.lr);
-  lastLoss = loss / BATCH;
-  lossHist.push(lastLoss); if (lossHist.length > 400) lossHist.shift();
-  updates++;
-  if (updates % TARGET_EVERY === 0) target.copyFrom(online);
-  chartDirty = true;
-}
+function trainFromReplay() { /* tabular learns online inside stepEnv */ }
 function doStep(greedy) {
   const done = stepEnv(greedy);
   if (done) endEpisode(greedy);
@@ -144,40 +116,39 @@ function endEpisode(greedy) {
   } else {
     playRuns++; playLast = env.foods + ' food';
     playHint.textContent = episodes === 0
-      ? 'Spinning in circles? The net is untrained — switch to TRAIN first.'
-      : 'DQN trained on ' + episodes + ' episodes · ' + updates + ' updates · best len ' + bestLen + '.';
+      ? 'Spinning in circles? The brain is untrained — switch to TRAIN first.'
+      : 'Table trained on ' + episodes + ' episodes · ' + updates + ' updates · best len ' + bestLen + '.';
   }
   respawnT = curSps() <= 30 ? 0.45 : 0.02;
 }
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-const KEY = 'snake-dqn-v6';
+const KEY = 'snake-tab-v1';
 function saveBrain(manual) {
   try {
     localStorage.setItem(KEY, JSON.stringify({
-      v: 6, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
-      updates, bestLen, net: online.serialize() }));
+      v: 1, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
+      updates, bestLen, visitedN, Q: Array.from(Q) }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
 }
 function loadBrain() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
-    if (!d || d.v !== 6 || !d.net) return false;
-    online.load(d.net); target.copyFrom(online);
+    if (!d || d.v !== 1 || !Array.isArray(d.Q) || d.Q.length !== NST * 3) return false;
+    Q = Float64Array.from(d.Q);
     Object.assign(params, d.params || {});
     episodes = d.episodes | 0; returns = d.returns || [];
     bestAvg = (d.bestAvg == null ? null : d.bestAvg);
-    updates = d.updates | 0; bestLen = d.bestLen | 0;
+    updates = d.updates | 0; bestLen = d.bestLen | 0; visitedN = d.visitedN | 0;
     return true;
   } catch (e) { return false; }
 }
 function resetBrain() {
-  online.l1 = layer(IN, H1); online.l2 = layer(H1, H2); online.l3 = layer(H2, NA); online.t = 0;
-  target.copyFrom(online);
+  Q.fill(0); visitedSt.fill(0); visitedN = 0; tdErr = 0;
   episodes = 0; returns.length = 0; bestAvg = null; congrat = false;
   updates = 0; lastLoss = 0; bestLen = 0; lossHist.length = 0;
-  repLen = 0; repHead = 0; playRuns = 0; playLast = '—';
+  playRuns = 0; playLast = '—';
   try { localStorage.removeItem(KEY); } catch (e) {}
   beginEpisode(); chartDirty = true; toast('BRAIN WIPED');
 }
