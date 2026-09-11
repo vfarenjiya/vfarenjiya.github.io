@@ -1,17 +1,17 @@
 'use strict';
-/* ============ TABULAR Q-LEARNING SNAKE ============
-   State = 72-cell egocentric abstraction:
-     3 danger bits (straight/left/right blocked)
-     × 3 food-forward levels (behind / aligned / ahead)
-     × 3 food-right levels   (left / aligned / right)
-   Actions = 3 relative (straight, left, right).
-   Off-policy Q-learning with greedy target, online updates. */
+/* ============ TABULAR Q-LEARNING SNAKE + SAFETY SHIELD ============
+   State = 72-cell egocentric abstraction (3 danger bits × 3 food-fwd × 3 food-right).
+   Actions = 3 relative. Off-policy Q-learning, online updates.
+   Shield: flood-fill free-space masking prevents self-traps (safe RL). */
 const NST = 72;
 let Q = new Float64Array(NST * 3);
 const visitedSt = new Uint8Array(NST);
 let visitedN = 0, tdErr = 0;
-const repLen = REPLAY;                 // keeps the ui loop condition happy; unused otherwise
+let shieldCount = 0, youRuns = 0, youBest = 0, youAct = null;
+const repLen = REPLAY;
 const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+const freeSeen = new Uint8Array(CELLS);
+const floodStack = new Int32Array(CELLS);
 
 function blockedCell(sn, x, y) {
   if (x < 0 || x >= GW || y < 0 || y >= GH) return true;
@@ -31,6 +31,46 @@ function stateIdx(sn, food, dir) {
   const lr = dr > 0 ? 2 : (dr < 0 ? 1 : 0);
   return d * 9 + lf * 3 + lr;
 }
+/* bounded flood fill: how many free cells can be reached from (x,y)? -1 = fatal cell */
+function freeSpace(x, y) {
+  if (x < 0 || x >= GW || y < 0 || y >= GH) return -1;
+  const start = y * GW + x;
+  if (tmpGrid[start]) return -1;
+  freeSeen.fill(0);
+  let count = 0, head = 0, tail = 0;
+  floodStack[tail++] = start; freeSeen[start] = 1;
+  const cap = env.snake.length + 6;
+  while (head < tail && count < cap) {
+    const c = floodStack[head++]; count++;
+    const cx = c % GW, cy = (c / GW) | 0;
+    for (let k = 0; k < 4; k++) {
+      const nx = cx + DIRS[k][0], ny = cy + DIRS[k][1];
+      if (nx < 0 || nx >= GW || ny < 0 || ny >= GH) continue;
+      const ni = ny * GW + nx;
+      if (freeSeen[ni] || tmpGrid[ni]) continue;
+      freeSeen[ni] = 1; floodStack[tail++] = ni;
+    }
+  }
+  return count;
+}
+/* shield: mask actions that lead into a pocket smaller than the snake */
+function shield(s, act) {
+  const h = env.snake[0], need = env.snake.length;
+  const spaces = [-2, -2, -2];
+  for (let a = 0; a < 3; a++) {
+    const nd = a === 0 ? env.dir : a === 1 ? (env.dir + 3) % 4 : (env.dir + 1) % 4;
+    spaces[a] = freeSpace(h.x + DIRS[nd][0], h.y + DIRS[nd][1]);
+  }
+  let ok = [];
+  for (let a = 0; a < 3; a++) if (spaces[a] >= need) ok.push(a);
+  if (!ok.length) for (let a = 0; a < 3; a++) if (spaces[a] >= 0) ok.push(a);
+  if (!ok.length) return act;
+  if (ok.indexOf(act) >= 0) return act;
+  shieldCount++;
+  let b = -Infinity, ba = ok[0];
+  for (const a of ok) { const q = Q[s * 3 + a]; if (q > b) { b = q; ba = a; } }
+  return ba;
+}
 function placeFood() {
   do { env.food = { x: (Math.random() * GW) | 0, y: (Math.random() * GH) | 0 }; }
   while (env.snake.some(s => s.x === env.food.x && s.y === env.food.y));
@@ -41,19 +81,23 @@ function beginEpisode() {
   env.dir = 0; env.steps = 0; env.noEat = 0; env.ret = 0; env.done = false; env.foods = 0;
   placeFood(); env.stepAt = performance.now();
 }
-function stepEnv(greedy) {
+function stepEnv(greedy, forced, isYou) {
   const s = stateIdx(env.snake, env.food, env.dir);
-  const eps = greedy ? 0 : curEps();
   let act;
-  if (Math.random() < eps) act = (Math.random() * 3) | 0;
+  if (forced != null) act = forced;                       // human (YOU) mode: no shield
   else {
-    const b = s * 3; let best = -Infinity, picks = [];
-    for (let a = 0; a < 3; a++) {
-      const q = Q[b + a];
-      if (q > best + 1e-9) { best = q; picks = [a]; }
-      else if (Math.abs(q - best) <= 1e-9) picks.push(a);
+    const eps = greedy ? 0 : curEps();
+    if (Math.random() < eps) act = (Math.random() * 3) | 0;
+    else {
+      const b = s * 3; let best = -Infinity, picks = [];
+      for (let a = 0; a < 3; a++) {
+        const q = Q[b + a];
+        if (q > best + 1e-9) { best = q; picks = [a]; }
+        else if (Math.abs(q - best) <= 1e-9) picks.push(a);
+      }
+      act = picks[(Math.random() * picks.length) | 0];
     }
-    act = picks[(Math.random() * picks.length) | 0];
+    act = shield(s, act);
   }
   const nd = act === 0 ? env.dir : act === 1 ? (env.dir + 3) % 4 : (env.dir + 1) % 4;
   env.dir = nd;
@@ -78,10 +122,10 @@ function stepEnv(greedy) {
     } else { env.snake.pop(); env.noEat++; }
     if (env.noEat > NO_EAT_LIMIT) { done = true; reward += R_TIMEOUT; }
     const dNow = manhattan(env.snake[0], env.food);
-    reward += (dPrev - dNow) * PHI_K;      // dense pull toward food (ideal: 0.25/cell)
+    reward += (dPrev - dNow) * PHI_K;
   }
   env.steps++; env.ret += reward; env.done = done; env.stepAt = performance.now();
-  /* ---- the one Bellman line ---- */
+  /* ---- Bellman update (also learns from PLAY and human YOU runs) ---- */
   const ns = stateIdx(env.snake, env.food, env.dir);
   let target;
   if (done) target = reward;
@@ -94,15 +138,24 @@ function stepEnv(greedy) {
   return done;
 }
 function trainFromReplay() { /* tabular learns online inside stepEnv */ }
-function doStep(greedy) {
-  const done = stepEnv(greedy);
-  if (done) endEpisode(greedy);
+function doStep(kind) {
+  const forced = kind === 'you' ? (youAct == null ? 0 : youAct) : null;
+  youAct = null;
+  const done = stepEnv(kind === 'play', forced, kind === 'you');
+  if (done) endEpisode(kind === 'play', kind === 'you');
 }
-function endEpisode(greedy) {
+function endEpisode(greedy, isYou) {
   const len = env.snake.length;
   if (len > bestLen) bestLen = len;
-  for (const [m, txt] of [[10, '🥉 LEN-10 CLUB'], [20, '🥈 LEN-20 CLUB'], [50, '🥇 LEN-50 CLUB']])
+  for (const [m, txt] of [[10, '🥉 LEN-10 CLUB'], [20, '🥈 LEN-20 CLUB'], [50, '🥇 LEN-50 CLUB'], [100, '🏆 CENTURY CLUB']])
     if (len === m) { toast(txt); ring(env.snake[0].x, env.snake[0].y, '#ffd166'); }
+  if (isYou) {
+    youRuns++;
+    if (env.foods > youBest) { youBest = env.foods; toast('🎮 NEW PERSONAL BEST · ' + youBest + ' FOOD'); }
+    playLast = env.foods + ' food';
+    respawnT = 0.6;
+    return;
+  }
   if (!greedy) {
     returns.push(env.ret); if (returns.length > 900) returns.splice(0, returns.length - 600);
     episodes++;
@@ -128,7 +181,7 @@ function saveBrain(manual) {
   try {
     localStorage.setItem(KEY, JSON.stringify({
       v: 1, params: { ...params }, episodes, returns: returns.slice(-300), bestAvg,
-      updates, bestLen, visitedN, Q: Array.from(Q) }));
+      updates, bestLen, visitedN, shieldCount, youBest, Q: Array.from(Q) }));
     if (manual) toast('BRAIN SAVED');
   } catch (e) {}
 }
@@ -141,6 +194,7 @@ function loadBrain() {
     episodes = d.episodes | 0; returns = d.returns || [];
     bestAvg = (d.bestAvg == null ? null : d.bestAvg);
     updates = d.updates | 0; bestLen = d.bestLen | 0; visitedN = d.visitedN | 0;
+    shieldCount = d.shieldCount | 0; youBest = d.youBest | 0;
     return true;
   } catch (e) { return false; }
 }
@@ -148,7 +202,7 @@ function resetBrain() {
   Q.fill(0); visitedSt.fill(0); visitedN = 0; tdErr = 0;
   episodes = 0; returns.length = 0; bestAvg = null; congrat = false;
   updates = 0; lastLoss = 0; bestLen = 0; lossHist.length = 0;
-  playRuns = 0; playLast = '—';
+  playRuns = 0; playLast = '—'; shieldCount = 0; youRuns = 0; youBest = 0;
   try { localStorage.removeItem(KEY); } catch (e) {}
   beginEpisode(); chartDirty = true; toast('BRAIN WIPED');
 }
