@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#04060c">
-<meta name="description" content="A deep-Q-network learns to play Snake from raw grid pixels. Watch it learn. No humans at the keys.">
-<title>Snake · DQN RL</title>
+<meta name="description" content="A 72-state tabular Q-learning snake: watch a 216-value table learn to hunt. AI trains, AI plays — you watch.">
+<title>Snake · Tabular Q RL</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -55,7 +55,7 @@
 <div id="sheet">
   <div id="handle"></div>
   <div id="chartWrap">
-    <div id="chartHead"><span class="l">RETURN PER EPISODE</span><span class="r">DQN · 648→80→40→3</span></div>
+    <div id="chartHead"><span class="l">RETURN PER EPISODE</span><span class="r">TABULAR Q · 72×3</span></div>
     <canvas id="chartCv"></canvas>
   </div>
   <div id="trainBody">
@@ -72,12 +72,12 @@
     </div>
   </div>
   <div id="playBody" hidden>
-    <p class="note">Exhibition: the net plays <b>greedy (ε = 0)</b> — pure exploitation of what it learned.</p>
+    <p class="note">Exhibition: the table plays <b>greedy (ε = 0)</b> — pure exploitation of what it learned.</p>
     <div class="pchiprow">
       <div class="pill"><div class="l">RUNS</div><div class="v" id="runsVal">0</div></div>
       <div class="pill"><div class="l">LAST</div><div class="v" id="playLast">—</div></div>
     </div>
-    <p class="note" id="playHint">Spinning in circles? The net is untrained — switch to TRAIN first.</p>
+    <p class="note" id="playHint">Spinning in circles? The brain is untrained — switch to TRAIN first.</p>
   </div>
   <div class="viewrow">
     <span class="cap">VIEW</span>
@@ -86,18 +86,21 @@
     <button class="tgl" id="tglSense">SENSE</button>
   </div>
   <div id="brainInfo" class="note"></div>
+  <div class="capline">POLICY MAP · rows = danger S/L/R · cols = food direction · box = now</div>
+  <canvas id="polCv"></canvas>
+  <div class="capline" id="medals">MEDALS · · ·</div>
 </div>
 
 <div id="splash"><div>
   <div class="emo">🐍</div>
-  <h1>SNAKE<span>·DQN</span></h1>
-  <p class="sub">A NEURAL NET LEARNS TO HUNT — FROM RAW PIXELS</p>
+  <h1>SNAKE<span>·Q</span></h1>
+  <p class="sub">A TINY Q-TABLE LEARNS TO HUNT — 72 STATES, 216 VALUES</p>
   <div class="tap">TAP TO START</div>
 </div></div>
 
 <div id="coach"><div>
-  <p>▶ <b>TRAIN</b> — the net plays & learns</p>
-  <p>⚙ <b>LAB</b> — hyperparams, chart, brain</p>
+  <p>▶ <b>TRAIN</b> — the AI plays & learns</p>
+  <p>⚙ <b>LAB</b> — sliders, chart, policy map</p>
   <p>✋ <b>HOLD THE BOARD</b> — slow-motion</p>
   <div class="tap">GOT IT</div>
 </div></div>
@@ -107,7 +110,6 @@
 
 <script src="js/config.js"></script>
 <script src="js/audio.js"></script>
-
 <script src="js/rl.js"></script>
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
