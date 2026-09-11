@@ -1,7 +1,7 @@
 {
-  "name": "Snake · DQN RL Lab",
-  "short_name": "SnakeRL",
-  "description": "A deep-Q-network learns Snake from raw grid pixels. AI trains, AI plays — you watch.",
+  "name": "Snake · Tabular Q RL Lab",
+  "short_name": "SnakeQ",
+  "description": "A 72-state tabular Q-learning snake. AI trains, AI plays — you watch the table learn.",
   "id": "./",
   "start_url": "./index.html",
   "scope": "./",
