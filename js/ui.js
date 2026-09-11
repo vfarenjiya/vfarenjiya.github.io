@@ -41,7 +41,7 @@ function frame(now) {
       let n = Math.min(acc | 0, 3000); acc -= n;
       let i = 0;
       while (i++ < n) {
-        doStep(mode);
+        try { doStep(mode); } catch (e) { console.error('step:', e); break; }   // HARDENING: never freeze the loop
         if (respawnT > 0) break;
       }
     }
