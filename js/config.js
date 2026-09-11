@@ -18,7 +18,7 @@ let respawnT = 0, acc = 0;
 let playRuns = 0, playLast = '—';
 const SPEEDS = [1, 2, 4, 8, 15, 30, 60, 120, 240, 480];
 let speedIdx = 4;
-const curSps = () => mode === 'play' ? 6 : SPEEDS[speedIdx];
+const curSps = () => mode === 'play' ? 6 : mode === 'you' ? 8 : SPEEDS[speedIdx];   // FIX 3: human-playable YOU speed
 const flags = { grid: true, glow: true, sense: false };
 let soundOn = false, particles = [], chartDirty = true;
 
