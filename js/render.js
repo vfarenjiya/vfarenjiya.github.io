@@ -55,7 +55,6 @@ function render(dt, t) {
     for (let x = 1; x < GW; x++) { g.beginPath(); g.moveTo(L.ox + x * cs, L.oy); g.lineTo(L.ox + x * cs, L.oy + GH * cs); g.stroke(); }
     for (let y = 1; y < GH; y++) { g.beginPath(); g.moveTo(L.ox, L.oy + y * cs); g.lineTo(L.ox + GW * cs, L.oy + y * cs); g.stroke(); }
   }
-  // sense line: what the shaping reward pulls on
   if (flags.sense) {
     const h = env.snake[0];
     g.strokeStyle = 'rgba(255,209,102,.3)'; g.lineWidth = 1.5; g.setLineDash([5, 6]);
@@ -64,14 +63,12 @@ function render(dt, t) {
     g.lineTo(L.ox + (env.food.x + .5) * cs, L.oy + (env.food.y + .5) * cs);
     g.stroke(); g.setLineDash([]);
   }
-  // food orb
   { const fx = L.ox + (env.food.x + .5) * cs, fy = L.oy + (env.food.y + .5) * cs;
     const pu = 1 + .18 * Math.sin(t * 5);
     g.save(); g.shadowColor = '#ffd166'; g.shadowBlur = cs * .8;
     const fg = g.createRadialGradient(fx, fy, 1, fx, fy, cs * .38 * pu);
     fg.addColorStop(0, '#fff6c9'); fg.addColorStop(1, '#ffb703');
     g.fillStyle = fg; g.beginPath(); g.arc(fx, fy, cs * .3 * pu, 0, 7); g.fill(); g.restore(); }
-  // shockwave rings
   for (let i = rings.length - 1; i >= 0; i--) {
     const r = rings[i]; r.age += dt;
     if (r.age > .6) { rings.splice(i, 1); continue; }
@@ -80,7 +77,6 @@ function render(dt, t) {
     g.beginPath(); g.arc(L.ox + (r.x + .5) * cs, L.oy + (r.y + .5) * cs, r.age * cs * 3, 0, 7); g.stroke();
   }
   g.globalAlpha = 1;
-  // snake, tapered + interpolated
   const sps = curSps();
   const frac = sps <= 30 ? Math.min(1, (performance.now() - env.stepAt) / (1000 / sps)) : 1;
   const pos = i => {
@@ -115,7 +111,35 @@ function render(dt, t) {
   g.globalAlpha = 1;
 }
 
-/* ================= CHART: returns + TD-loss overlay ================= */
+/* ================= POLICY MAP: the whole table, live ================= */
+function drawPolicyMap() {
+  const c = $('#polCv'); if (!c || !c.clientWidth) return;
+  const W = c.clientWidth, H = c.clientHeight;
+  c.width = W * DPR; c.height = H * DPR;
+  const g = c.getContext('2d');
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.clearRect(0, 0, W, H);
+  const cols = 9, rows = 8, cw = W / cols, ch = H / rows;
+  const cur = stateIdx(env.snake, env.food, env.dir);
+  const COL = ['#35e0c8', '#ffb703', '#c792ea'];   // straight / left / right
+  for (let d = 0; d < 8; d++) for (let f = 0; f < 9; f++) {
+    const s = d * 9 + f, b = s * 3;
+    let ai = 0, mx = -Infinity, mn = Infinity;
+    for (let a = 0; a < 3; a++) { const q = Q[b + a]; if (q > mx) { mx = q; ai = a; } if (q < mn) mn = q; }
+    const conf = Math.min(1, (mx - mn) / 20);
+    const seen = visitedSt[s];
+    g.globalAlpha = seen ? 0.25 + 0.65 * conf : 0.12;
+    g.fillStyle = seen ? COL[ai] : '#3a4664';
+    g.fillRect(f * cw + 1, d * ch + 1, cw - 2, ch - 2);
+    if (s === cur) {
+      g.globalAlpha = 1; g.strokeStyle = '#fff'; g.lineWidth = 2;
+      g.strokeRect(f * cw + 1, d * ch + 1, cw - 2, ch - 2);
+    }
+  }
+  g.globalAlpha = 1;
+}
+
+/* ================= CHART ================= */
 function drawChart() {
   const W = chartCv.clientWidth, H = chartCv.clientHeight;
   if (!W) return;
@@ -148,13 +172,4 @@ function drawChart() {
   for (let i = 1; i < N; i++) { const w = Math.min(i + 1, 30);
     g.lineTo(x(i), y((pre[i + 1] - pre[i + 1 - w]) / w)); }
   g.stroke();
-  // TD-loss (own scale, red)
-  const M = lossHist.length;
-  if (M > 2) {
-    let lmx = 1e-6; for (const v of lossHist) if (v > lmx) lmx = v;
-    const y2 = v => pt + (1 - v / (lmx * 1.1)) * (H - pt - pb);
-    g.strokeStyle = 'rgba(255,90,77,.55)'; g.lineWidth = 1; g.beginPath();
-    lossHist.forEach((v, i) => i ? g.lineTo(x(i / (M - 1) * (N - 1) | 0), y2(v)) : g.moveTo(pl, y2(v)));
-    g.stroke();
-  }
 }
