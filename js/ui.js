@@ -1,5 +1,5 @@
 'use strict';
-let hudT = 0, polT = 0, timeScale = 1, pd = null;
+let hudT = 0, polT = 0, timeScale = 1;
 function updateHud() {
   epVal.textContent = episodes;
   const e = mode === 'train' ? curEps() : 0;
@@ -79,9 +79,8 @@ function setMode(m) {
   setSeg($('#segMode'), m === 'train' ? 0 : m === 'play' ? 1 : 2);
   $('#trainBody').hidden = m !== 'train';
   $('#playBody').hidden = m === 'train';
-  $('#youPad').hidden = m !== 'you';
   if (m === 'you')
-    playHint.textContent = 'Tap ⟲ / ⟳ (or swipe, or arrow keys) to turn. The AI safety shield is OFF for you — and every run you play teaches the table.';
+    playHint.textContent = 'TAP the board on the side you want to turn toward (relative to the snake). One tap = one turn. The shield is OFF for you — and your runs teach the table.';
   else if (m === 'play')
     playHint.textContent = episodes === 0
       ? 'Spinning in circles? The brain is untrained — switch to TRAIN first.'
@@ -89,22 +88,20 @@ function setMode(m) {
   if (m !== 'train') running = true;
   acc = 0; respawnT = 0; youAct = null; beginEpisode(); updateTransport(); updateHud();
 }
-/* ---- YOU-mode input: buttons (always work) + swipe + keys ---- */
-$('#btnL').addEventListener('pointerdown', e => { e.preventDefault(); youAct = 1; });
-$('#btnR').addEventListener('pointerdown', e => { e.preventDefault(); youAct = 2; });
+/* ---- YOU-mode input: single tap, interpreted in the snake's own frame ---- */
 cv.addEventListener('pointerdown', e => {
-  if (mode === 'you') pd = { x: e.clientX, y: e.clientY };
-  else if (running && curSps() <= 30) timeScale = .35;
+  if (mode === 'you') {
+    const h = env.snake[0];
+    const hx = L.ox + (h.x + .5) * L.cell, hy = L.oy + (h.y + .5) * L.cell;
+    const dx = e.clientX - hx, dy = e.clientY - hy;
+    if (Math.hypot(dx, dy) < 12) return;              // tap on the head itself: ignore
+    const f = DIRS[env.dir], r0 = -f[1], r1 = f[0];   // snake's right-hand vector
+    youAct = (dx * r0 + dy * r1) > 0 ? 2 : 1;         // tap on right side → turn right
+  } else if (running && curSps() <= 30) timeScale = .35;
 });
-cv.addEventListener('pointermove', e => {
-  if (mode === 'you' && pd) {
-    const dx = e.clientX - pd.x, dy = e.clientY - pd.y;
-    if (Math.hypot(dx, dy) > 18) { youAct = dirToRel(dx, dy); pd = { x: e.clientX, y: e.clientY }; }
-  }
-});
-addEventListener('pointerup', () => { pd = null; timeScale = 1; });
-addEventListener('pointercancel', () => { pd = null; timeScale = 1; });
-addEventListener('keydown', e => {
+addEventListener('pointerup', () => { timeScale = 1; });
+addEventListener('pointercancel', () => { timeScale = 1; });
+addEventListener('keydown', e => {                    // desktop convenience only
   if (mode !== 'you') return;
   const k = e.key;
   if (k === 'ArrowUp') youAct = dirToRel(0, -1);
@@ -117,7 +114,7 @@ function dirToRel(dx, dy) {
   if (Math.abs(dx) > Math.abs(dy)) ad = dx > 0 ? 1 : 3;
   else ad = dy > 0 ? 2 : 0;
   const diff = (ad - env.dir + 4) % 4;
-  return diff === 0 ? 0 : diff === 3 ? 1 : diff === 1 ? 2 : 0;   // reverse → ignore
+  return diff === 0 ? 0 : diff === 3 ? 1 : diff === 1 ? 2 : 0;
 }
 cv.addEventListener('contextmenu', e => e.preventDefault());
 $('#segMode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); });
@@ -194,7 +191,6 @@ coach.addEventListener('pointerdown', () => {
 
 const hadSave = loadBrain();
 setSeg($('#segMode'), 0);
-$('#youPad').hidden = true;
 $('#btnSound').classList.toggle('on', soundOn);
 for (const [key] of SLIDERS) {
   const i = $('#pr_' + key);
