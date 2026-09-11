@@ -41,7 +41,7 @@ function frame(now) {
       let n = Math.min(acc | 0, 3000); acc -= n;
       let i = 0;
       while (i++ < n) {
-        try { doStep(mode); } catch (e) { console.error('step:', e); break; }   // HARDENING: never freeze the loop
+        try { doStep(mode); } catch (e) { console.error('step:', e); break; }
         if (respawnT > 0) break;
       }
     }
@@ -79,8 +79,9 @@ function setMode(m) {
   setSeg($('#segMode'), m === 'train' ? 0 : m === 'play' ? 1 : 2);
   $('#trainBody').hidden = m !== 'train';
   $('#playBody').hidden = m === 'train';
+  $('#youPad').hidden = m !== 'you';
   if (m === 'you')
-    playHint.textContent = 'Swipe on the board (or use arrow keys) to steer. The AI safety shield is OFF for you — and every run you play teaches the table.';
+    playHint.textContent = 'Tap ⟲ / ⟳ (or swipe, or arrow keys) to turn. The AI safety shield is OFF for you — and every run you play teaches the table.';
   else if (m === 'play')
     playHint.textContent = episodes === 0
       ? 'Spinning in circles? The brain is untrained — switch to TRAIN first.'
@@ -88,7 +89,9 @@ function setMode(m) {
   if (m !== 'train') running = true;
   acc = 0; respawnT = 0; youAct = null; beginEpisode(); updateTransport(); updateHud();
 }
-/* input: slow-mo hold (train/play) + swipe steering (YOU) */
+/* ---- YOU-mode input: buttons (always work) + swipe + keys ---- */
+$('#btnL').addEventListener('pointerdown', e => { e.preventDefault(); youAct = 1; });
+$('#btnR').addEventListener('pointerdown', e => { e.preventDefault(); youAct = 2; });
 cv.addEventListener('pointerdown', e => {
   if (mode === 'you') pd = { x: e.clientX, y: e.clientY };
   else if (running && curSps() <= 30) timeScale = .35;
@@ -96,7 +99,7 @@ cv.addEventListener('pointerdown', e => {
 cv.addEventListener('pointermove', e => {
   if (mode === 'you' && pd) {
     const dx = e.clientX - pd.x, dy = e.clientY - pd.y;
-    if (Math.hypot(dx, dy) > 24) { youAct = dirToRel(dx, dy); pd = { x: e.clientX, y: e.clientY }; }
+    if (Math.hypot(dx, dy) > 18) { youAct = dirToRel(dx, dy); pd = { x: e.clientX, y: e.clientY }; }
   }
 });
 addEventListener('pointerup', () => { pd = null; timeScale = 1; });
@@ -191,6 +194,7 @@ coach.addEventListener('pointerdown', () => {
 
 const hadSave = loadBrain();
 setSeg($('#segMode'), 0);
+$('#youPad').hidden = true;
 $('#btnSound').classList.toggle('on', soundOn);
 for (const [key] of SLIDERS) {
   const i = $('#pr_' + key);
