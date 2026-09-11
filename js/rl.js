@@ -1,18 +1,20 @@
 'use strict';
-/* ============ TABULAR Q-LEARNING SNAKE + SAFETY SHIELD ============
-   State = 72-cell egocentric abstraction (3 danger bits × 3 food-fwd × 3 food-right).
-   Actions = 3 relative. Off-policy Q-learning, online updates.
-   Shield: flood-fill free-space masking prevents self-traps (safe RL). */
+/* ============ TABULAR Q-LEARNING SNAKE + SAFETY SHIELD ============ */
 const NST = 72;
 let Q = new Float64Array(NST * 3);
 const visitedSt = new Uint8Array(NST);
 let visitedN = 0, tdErr = 0;
 let shieldCount = 0, youRuns = 0, youBest = 0, youAct = null;
 const repLen = REPLAY;
-const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+const tmpGrid = new Uint8Array(CELLS);          // FIX 1: occupancy grid (was missing)
 const freeSeen = new Uint8Array(CELLS);
 const floodStack = new Int32Array(CELLS);
+const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
+function buildGrid(sn) {                        // FIX 2: tail excluded (it vacates)
+  tmpGrid.fill(0);
+  for (let i = 0; i < sn.length - 1; i++) tmpGrid[sn[i].y * GW + sn[i].x] = 1;
+}
 function blockedCell(sn, x, y) {
   if (x < 0 || x >= GW || y < 0 || y >= GH) return true;
   for (let i = 0; i < sn.length - 1; i++) if (sn[i].x === x && sn[i].y === y) return true;
@@ -31,7 +33,6 @@ function stateIdx(sn, food, dir) {
   const lr = dr > 0 ? 2 : (dr < 0 ? 1 : 0);
   return d * 9 + lf * 3 + lr;
 }
-/* bounded flood fill: how many free cells can be reached from (x,y)? -1 = fatal cell */
 function freeSpace(x, y) {
   if (x < 0 || x >= GW || y < 0 || y >= GH) return -1;
   const start = y * GW + x;
@@ -53,7 +54,6 @@ function freeSpace(x, y) {
   }
   return count;
 }
-/* shield: mask actions that lead into a pocket smaller than the snake */
 function shield(s, act) {
   const h = env.snake[0], need = env.snake.length;
   const spaces = [-2, -2, -2];
@@ -83,8 +83,9 @@ function beginEpisode() {
 }
 function stepEnv(greedy, forced, isYou) {
   const s = stateIdx(env.snake, env.food, env.dir);
+  buildGrid(env.snake);                          // FIX 1: grid exists before shield uses it
   let act;
-  if (forced != null) act = forced;                       // human (YOU) mode: no shield
+  if (forced != null) act = forced;
   else {
     const eps = greedy ? 0 : curEps();
     if (Math.random() < eps) act = (Math.random() * 3) | 0;
@@ -125,7 +126,6 @@ function stepEnv(greedy, forced, isYou) {
     reward += (dPrev - dNow) * PHI_K;
   }
   env.steps++; env.ret += reward; env.done = done; env.stepAt = performance.now();
-  /* ---- Bellman update (also learns from PLAY and human YOU runs) ---- */
   const ns = stateIdx(env.snake, env.food, env.dir);
   let target;
   if (done) target = reward;
