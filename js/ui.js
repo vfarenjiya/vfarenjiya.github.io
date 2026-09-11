@@ -10,7 +10,6 @@ function updateHud() {
   lenVal.textContent = env.snake.length;
   foodVal.textContent = env.foods;
   stepVal.textContent = env.steps;
-  
   updVal.textContent = updates + '·' + env.foods;
   if (mode === 'play') {
     runsVal.textContent = playRuns; playLastEl.textContent = playLast;
@@ -21,10 +20,10 @@ function updateHud() {
 function brainInfo() {
   const el = $('#brainInfo'); if (!el) return;
   el.textContent =
-    'DQN  12→32→16→3 · ego-features · replay ' + repLen + '/' + REPLAY + '\n' +
-    'updates ' + updates + ' · TD-loss ' + lastLoss.toFixed(3) + ' · best len ' + bestLen + '\n' +
+    'TABULAR Q  72 states × 3 actions = 216 values · visited ' + visitedN + '/72\n' +
+    'updates ' + updates + ' · |δ| ' + tdErr.toFixed(3) + ' · best len ' + bestLen + '\n' +
     'ε     ' + curEps().toFixed(3) + '  =  ' + params.epsEnd + ' + ' + params.epsStart + '·e^(−ep/' + params.halfLife + ')\n' +
-    'Q(s,a) ← Q + α_adam·[ r + γ·max Q_target(s′,·) − Q ]   γ=' + params.gamma;
+    'Q(s,a) ← Q + α·[ r + γ·max Q(s′,·) − Q ]   α=' + (params.alpha || 0.3) + ' γ=' + params.gamma;
 }
 let lastT = performance.now();
 function frame(now) {
@@ -94,7 +93,7 @@ $('#speed').addEventListener('input', e => {
   $('#spdVal').textContent = SPEEDS[speedIdx] <= 30 ? SPEEDS[speedIdx] + ' st/s' : 'TURBO ×' + SPEEDS[speedIdx];
 });
 const SLIDERS = [
-  ['lr',       'LR · ADAM STEP',           0.0002, 0.005, 0.0002, v => v.toFixed(4)],
+  ['alpha',    'α · LEARNING RATE',        0.05, 1, 0.05, v => v.toFixed(2)],
   ['gamma',    'γ · DISCOUNT',             0.80, 1, 0.01, v => v.toFixed(2)],
   ['epsStart', 'ε · EXPLORE START',        0, 1, 0.01, v => v.toFixed(2)],
   ['epsEnd',   'ε · EXPLORE FLOOR',        0, 0.5, 0.01, v => v.toFixed(2)],
@@ -156,7 +155,7 @@ for (const [key] of SLIDERS) {
   const i = $('#pr_' + key);
   if (i) { i.value = params[key]; $('#pv_' + key).textContent = (+params[key]).toFixed(key === 'halfLife' ? 0 : key === 'lr' ? 4 : 2); }
 }
-if (hadSave && episodes > 0) toast('SAVED DQN LOADED · EP ' + episodes);
+if (hadSave && episodes > 0) toast('SAVED BRAIN LOADED · EP ' + episodes);
 layout(); beginEpisode(); updateTransport(); updateHud(); checkOri(); brainInfo();
 requestAnimationFrame(frame);
 if ('serviceWorker' in navigator)
