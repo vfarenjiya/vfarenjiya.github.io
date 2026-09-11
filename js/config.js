@@ -1,14 +1,12 @@
 'use strict';
 const GW = 12, GH = 18, CELLS = GW * GH;
-const IN = 12, H1 = 32, H2 = 16, NA = 3;      // ego-feature vector → tiny fast net
+const IN = 12, H1 = 32, H2 = 16, NA = 3;      // legacy DQN dims (unused by tabular rl.js)
 const REPLAY = 20000, WARM = 300, BATCH = 4, TRAIN_EVERY = 1, TARGET_EVERY = 200;
-const R_EAT = 10, R_DIE = -10, R_TIMEOUT = -5, NO_EAT_LIMIT = 150;
-const PHI_K = 0.1;
+const R_EAT = 10, R_DIE = -10, R_TIMEOUT = -2, NO_EAT_LIMIT = 200;
+const PHI_K = 0.25;
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 
-const params = { alpha: 0.3, lr: 0.003, gamma: 0.95, epsStart: 1.0, epsEnd: 0.05, halfLife: 60 };
-
-
+const params = { alpha: 0.5, lr: 0.003, gamma: 0.9, epsStart: 1.0, epsEnd: 0.01, halfLife: 40 };
 let episodes = 0, returns = [], bestAvg = null, congrat = false;
 let updates = 0, lastLoss = 0, bestLen = 0;
 const lossHist = [];
