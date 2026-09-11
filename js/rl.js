@@ -78,7 +78,7 @@ function stepEnv(greedy) {
     } else { env.snake.pop(); env.noEat++; }
     if (env.noEat > NO_EAT_LIMIT) { done = true; reward += R_TIMEOUT; }
     const dNow = manhattan(env.snake[0], env.food);
-    reward += (dPrev - dNow) * 0.4;      // dense, non-telescoping pull toward food
+    reward += (dPrev - dNow) * PHI_K;      // dense pull toward food (ideal: 0.25/cell)
   }
   env.steps++; env.ret += reward; env.done = done; env.stepAt = performance.now();
   /* ---- the one Bellman line ---- */
@@ -88,7 +88,7 @@ function stepEnv(greedy) {
   else target = reward + params.gamma * Math.max(Q[ns * 3], Q[ns * 3 + 1], Q[ns * 3 + 2]);
   const delta = target - Q[s * 3 + act];
   tdErr = Math.abs(delta); lastLoss = tdErr;
-  Q[s * 3 + act] += (params.alpha || 0.3) * delta;
+  Q[s * 3 + act] += (params.alpha || 0.5) * delta;
   if (!visitedSt[s]) { visitedSt[s] = 1; visitedN++; }
   updates++;
   return done;
