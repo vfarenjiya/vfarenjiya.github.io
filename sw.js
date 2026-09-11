@@ -1,4 +1,4 @@
-const VERSION = 'snake-v12';
+const VERSION = 'snake-v13';
 const FONTS = 'cliff-walker-fonts-v1';
 const CORE = ['./', './index.html', './style.css',
   './js/config.js', './js/audio.js', './js/net.js', './js/rl.js', './js/render.js', './js/ui.js',
