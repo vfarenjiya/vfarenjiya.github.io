@@ -153,3 +153,7 @@ body.blocked #cv,body.blocked #hud,body.blocked #dock{filter:blur(6px);pointer-e
   box-shadow:0 4px 0 rgba(23,35,59,.25)}
 
 .pill .v{font-size:15px}
+
+#polCv{width:100%;height:132px;display:block;border-radius:10px;background:#0b1120;margin-top:6px}
+.capline{font-size:8.5px;letter-spacing:1.6px;color:var(--faint);font-weight:800;margin-top:10px}
+#medals{letter-spacing:2px;font-size:11px}
