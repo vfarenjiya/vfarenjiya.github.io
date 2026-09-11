@@ -1,5 +1,5 @@
 'use strict';
-let hudT = 0, timeScale = 1;
+let hudT = 0, polT = 0, timeScale = 1;
 function updateHud() {
   epVal.textContent = episodes;
   const e = mode === 'play' ? 0 : curEps();
@@ -11,6 +11,9 @@ function updateHud() {
   foodVal.textContent = env.foods;
   stepVal.textContent = env.steps;
   updVal.textContent = updates + '·' + env.foods;
+  const mEl = $('#medals');
+  if (mEl) mEl.textContent = 'MEDALS ' + (bestLen >= 10 ? '🥉' : '·') + ' ' +
+    (bestLen >= 20 ? '🥈' : '·') + ' ' + (bestLen >= 50 ? '🥇' : '·');
   if (mode === 'play') {
     runsVal.textContent = playRuns; playLastEl.textContent = playLast;
     playLastEl.style.color = 'var(--teal)';
@@ -37,17 +40,18 @@ function frame(now) {
       let i = 0;
       while (i++ < n) {
         doStep(mode === 'play');
-        if (mode === 'train' && repLen > WARM) {
-          trainFromReplay();
-          if (speedIdx >= 8) trainFromReplay();
-        }
         if (respawnT > 0) break;
       }
     }
   }
   try { render(dt, now / 1000); } catch (e) { console.error('render:', e); }
   if (chartDirty) { drawChart(); chartDirty = false; }
-  hudT += dt; if (hudT > .12) { hudT = 0; updateHud(); }
+  hudT += dt;
+  if (hudT > .12) { hudT = 0; updateHud(); }
+  if (sheet.classList.contains('open')) {
+    polT += dt;
+    if (polT > .3) { polT = 0; drawPolicyMap(); }
+  }
   requestAnimationFrame(frame);
 }
 function toast(msg) {
@@ -65,7 +69,7 @@ function updateTransport() {
 const sheet = $('#sheet'), scrim = $('#scrim');
 function openSheet(o) {
   sheet.classList.toggle('open', o); scrim.classList.toggle('show', o);
-  if (o) chartDirty = true;
+  if (o) { chartDirty = true; drawPolicyMap(); }
 }
 function setMode(m) {
   if (m === mode) return;
@@ -141,7 +145,9 @@ const splash = $('#splash'), coach = $('#coach');
 splash.addEventListener('pointerdown', () => {
   splash.classList.add('gone'); S();
   setTimeout(() => splash.remove(), 600);
-  try { if (!localStorage.getItem('snake-coach')) coach.classList.add('show'); } catch (e) {}
+  setTimeout(() => {                       // wait for splash to finish fading
+    try { if (!localStorage.getItem('snake-coach')) coach.classList.add('show'); } catch (e) {}
+  }, 650);
 }, { once: true });
 coach.addEventListener('pointerdown', () => {
   coach.classList.remove('show');
@@ -153,7 +159,7 @@ setSeg($('#segMode'), 0);
 $('#btnSound').classList.toggle('on', soundOn);
 for (const [key] of SLIDERS) {
   const i = $('#pr_' + key);
-  if (i) { i.value = params[key]; $('#pv_' + key).textContent = (+params[key]).toFixed(key === 'halfLife' ? 0 : key === 'lr' ? 4 : 2); }
+  if (i) { i.value = params[key]; $('#pv_' + key).textContent = (+params[key]).toFixed(key === 'halfLife' ? 0 : 2); }
 }
 if (hadSave && episodes > 0) toast('SAVED BRAIN LOADED · EP ' + episodes);
 layout(); beginEpisode(); updateTransport(); updateHud(); checkOri(); brainInfo();
