@@ -13,7 +13,7 @@
   "icons": [
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
-  ],
+   ],
   "shortcuts": [
     { "name": "New habit", "short_name": "New", "description": "Create a habit to track", "url": "index.html#new=1" }
   ]
