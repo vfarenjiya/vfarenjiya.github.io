@@ -1,8 +1,8 @@
-// v1.5 — honest storage card: app data / on-disk / 300 MB budget / capped quota; import pre-flight
 import { h } from '../utils/dom.js';
 import { getState, replaceAll, clearAll } from '../store.js';
-import { promptInstall } from '../features/install.js';
-import { checkForUpdates } from '../features/updater.js';
+import { promptInstall, installAvailable, installReason, isIOS } from '../features/install.js';
+import { checkForUpdates, retryRegistration } from '../features/updater.js';
+import { collectDiagnostics, verdicts, fixHints } from '../features/diagnostics.js';
 import { requestNotificationPermission } from '../features/reminders.js';
 import { getTheme, setTheme } from '../features/theme.js';
 import { STORAGE_BUDGET, fmtBytes, cappedQuota, byteLength } from '../utils/bytes.js';
@@ -35,7 +35,6 @@ export function renderProfile(root) {
   const file = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none',
     onchange: (e) => e.target.files[0] && importData(e.target.files[0]) });
 
-  /* ---- storage card (v1.5 layout + budget) ---- */
   const appBytes = byteLength(JSON.stringify(getState()));
   const line1 = h('p', { class: 'muted' }, `app data: ${fmtBytes(appBytes)} · measuring on-disk footprint…`);
   const line2 = h('p', { class: 'muted' }, `app budget: ${fmtBytes(STORAGE_BUDGET)}`);
@@ -43,8 +42,7 @@ export function renderProfile(root) {
     .then((e) => {
       line1.textContent = `app data: ${fmtBytes(appBytes)} · on disk incl. cache: ${fmtBytes(e.usage || 0)}`;
       const real = Number.isFinite(e.quota) ? e.quota : null;
-      const capped = cappedQuota(real);
-      line2.textContent = `app budget: ${fmtBytes(STORAGE_BUDGET)} · quota shown: ${fmtBytes(capped)}` +
+      line2.textContent = `app budget: ${fmtBytes(STORAGE_BUDGET)} · quota shown: ${fmtBytes(cappedQuota(real))}` +
         (real !== null && real > STORAGE_BUDGET ? ' (cap applied — browser offers more)' : '');
     })
     .catch(() => { line1.textContent = `app data: ${fmtBytes(appBytes)}`; });
@@ -53,16 +51,34 @@ export function renderProfile(root) {
   navigator.storage?.persisted?.().then((p) => { persistVal.textContent = p ? 'yes' : 'no'; })
     .catch(() => { persistVal.textContent = 'n/a'; });
 
+  const retryBtn = h('button', { type: 'button', class: 'btn-ghost', hidden: true, onclick: () => retryRegistration() }, 'retry registration');
+  const diagBody = h('div', {});
+  async function refreshDiag() {
+    diagBody.replaceChildren(h('p', { class: 'muted' }, 'collecting…'));
+    const d = await collectDiagnostics();
+    const rows = verdicts(d).map((v) => h('p', { class: 'diag ' + v.level },
+      `${v.level === 'ok' ? '✓' : v.level === 'bad' ? '✗' : '!'}  ${v.text}`));
+    const hints = fixHints(d);
+    diagBody.replaceChildren(...rows,
+      ...(hints.length
+        ? [h('p', { class: 'diag-head' }, 'how to fix'), ...hints.map((t) => h('p', { class: 'muted hint' }, '→ ' + t))]
+        : []));
+    retryBtn.hidden = !(d.swSupported && d.secure && (d.swState === 'none' || d.swState === 'redundant'));
+  }
+  refreshDiag();
+
   root.append(
     h('h1', { class: 'view-title' }, 'profile'),
     h('div', { class: 'card profile-row' },
       h('div', {},
         h('h3', {}, 'app'),
-        h('p', { class: 'muted' }, `v1.5.0 · ${navigator.onLine ? 'online' : 'offline'} · data stays on this device`),
+        h('p', { class: 'muted' }, `v1.7.1 · ${navigator.onLine ? 'online' : 'offline'} · data stays on this device`),
         h('p', { class: 'muted' }, 'shortcuts: n = new habit · 1–4 = switch tabs')),
       h('button', { type: 'button', class: 'btn-primary', onclick: async () => {
-          if (await promptInstall()) toast('installed ✓');
-          else toast('use browser menu → "install app" if no prompt appears');
+          if (installAvailable()) { if (await promptInstall()) toast('installed ✓'); return; }
+          const reason = installReason();
+          if (reason) { toast(reason, { ms: 7000 }); return; }
+          toast(isIOS() ? 'iOS: Share → "Add to Home Screen"' : 'browser menu ⋮ → "Install app…"', { ms: 7000 });
         } }, 'install app')),
 
     h('div', { class: 'card profile-row' },
@@ -75,11 +91,9 @@ export function renderProfile(root) {
         h('button', { type: 'button', class: 'seg-btn' + (cur === 'white' ? ' active' : ''),
           'aria-pressed': cur === 'white', onclick: () => setTheme('white') }, 'white'))),
 
-    /* v1.5: stacked, unambiguous storage card */
     h('div', { class: 'card storage-card' },
       h('h3', {}, 'storage'),
-      line1,
-      line2,
+      line1, line2,
       h('p', { class: 'muted' }, 'persisted: ', persistVal),
       h('div', { class: 'row-gap' },
         h('button', { type: 'button', class: 'btn-ghost', onclick: async () => {
@@ -88,9 +102,19 @@ export function renderProfile(root) {
             persistVal.textContent = ok ? 'yes' : 'no';
           } }, 'request persistence'))),
 
-    h('div', { class: 'card profile-row' },
-      h('div', {}, h('h3', {}, 'updates'), h('p', { class: 'muted' }, 'new versions toast a reload button when downloaded')),
-      h('button', { type: 'button', class: 'btn-ghost', onclick: () => checkForUpdates() }, 'check now')),
+    h('div', { class: 'card storage-card' },
+      h('h3', {}, 'updates'),
+      h('p', { class: 'muted' }, 'new versions toast a reload button when downloaded'),
+      h('div', { class: 'row-gap' },
+        h('button', { type: 'button', class: 'btn-ghost', onclick: () => checkForUpdates() }, 'check now'),
+        retryBtn)),
+
+    h('div', { class: 'card storage-card' },
+      h('div', { class: 'row-between' },
+        h('h3', {}, 'diagnostics'),
+        h('button', { type: 'button', class: 'btn-ghost', onclick: () => refreshDiag() }, 'refresh')),
+      diagBody),
+
     h('div', { class: 'card profile-row' },
       h('div', {}, h('h3', {}, 'notifications'), h('p', { class: 'muted' }, 'reminders fire while the app is open')),
       h('button', { type: 'button', class: 'btn-ghost', onclick: () => requestNotificationPermission() }, 'enable')),
