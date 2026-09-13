@@ -1,4 +1,4 @@
-const VERSION = '1.5.0';                 // bump on every release
+const VERSION = '1.7.0';                 // bump on every release
 const CACHE = `habits-${VERSION}`;
 const APP_SHELL = [
   './', './index.html', './manifest.webmanifest', './icons/icon.svg',
@@ -11,13 +11,21 @@ const APP_SHELL = [
   './js/components/sparkline.js', './js/components/stat-card.js',
   './js/features/habit-form.js', './js/features/reminders.js', './js/features/install.js',
   './js/features/coach.js', './js/features/updater.js', './js/features/badge.js',
-  './js/features/theme.js',
+  './js/features/theme.js', './js/features/diagnostics.js',
   './js/views/habits-view.js', './js/views/insights-view.js',
   './js/views/coach-view.js', './js/views/profile-view.js'
 ];
+/* Optional assets: a 404 here must NEVER break installation (e.g. PNGs not generated yet). */
+const OPTIONAL = [
+  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'
+];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(APP_SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(APP_SHELL))
+      .then(() => caches.open(CACHE).then((c) => Promise.allSettled(OPTIONAL.map((u) => c.add(u)))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -36,11 +44,15 @@ self.addEventListener('fetch', (e) => {
 
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put('./index.html', copy));
-        return res;
-      }).catch(() => caches.match('./index.html'))
+      // Pages sends max-age=600; force revalidation (ETag → cheap 304s) so updates propagate now,
+      // and fall back to the cached shell when offline.
+      fetch(req, { cache: 'no-cache' })
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put('./index.html', copy));
+          return res;
+        })
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
