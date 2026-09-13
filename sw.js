@@ -1,7 +1,7 @@
-const VERSION = '1.7.0';                 // bump on every release
+const VERSION = '1.7.1';                 // bump on every release
 const CACHE = `habits-${VERSION}`;
 const APP_SHELL = [
-  './', './index.html', './manifest.webmanifest', './icons/icon.svg',
+  './', './index.html', './manifest.json', './icons/icon.svg',
   './css/base.css', './css/components.css', './css/views.css',
   './js/main.js', './js/router.js', './js/store.js', './js/stats.js',
   './js/utils/dom.js', './js/utils/date.js', './js/utils/streaks.js', './js/utils/icons.js',
@@ -15,10 +15,8 @@ const APP_SHELL = [
   './js/views/habits-view.js', './js/views/insights-view.js',
   './js/views/coach-view.js', './js/views/profile-view.js'
 ];
-/* Optional assets: a 404 here must NEVER break installation (e.g. PNGs not generated yet). */
-const OPTIONAL = [
-  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'
-];
+/* Optional: exist only if CI generated them. A 404 here must NEVER break install/offline. */
+const OPTIONAL = ['./icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -44,9 +42,7 @@ self.addEventListener('fetch', (e) => {
 
   if (req.mode === 'navigate') {
     e.respondWith(
-      // Pages sends max-age=600; force revalidation (ETag → cheap 304s) so updates propagate now,
-      // and fall back to the cached shell when offline.
-      fetch(req, { cache: 'no-cache' })
+      fetch(req, { cache: 'no-cache' })          // revalidate (Pages sends max-age=600)
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put('./index.html', copy));
