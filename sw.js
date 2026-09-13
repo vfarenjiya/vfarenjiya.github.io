@@ -1,4 +1,4 @@
-const VERSION = '1.7.1';                 // bump on every release
+const VERSION = '1.7.2';                 // bump on every release
 const CACHE = `habits-${VERSION}`;
 const APP_SHELL = [
   './', './index.html', './manifest.json', './icons/icon.svg',
@@ -15,14 +15,27 @@ const APP_SHELL = [
   './js/views/habits-view.js', './js/views/insights-view.js',
   './js/views/coach-view.js', './js/views/profile-view.js'
 ];
-/* Optional: exist only if CI generated them. A 404 here must NEVER break install/offline. */
+/* Optional (exist only if CI generated them). Absence must never break install/offline. */
 const OPTIONAL = ['./icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(APP_SHELL))
-      .then(() => caches.open(CACHE).then((c) => Promise.allSettled(OPTIONAL.map((u) => c.add(u)))))
-      .then(() => self.skipWaiting())
+    // v1.7.2: per-URL fetch with cache:'no-cache' instead of addAll().
+    // addAll() can silently store STALE browser-HTTP-cache copies (Pages sends max-age=600);
+    // explicit fetches revalidate (ETag → 304) so each cache version starts from server truth.
+    caches.open(CACHE).then((c) =>
+      Promise.all(APP_SHELL.map((u) =>
+        fetch(u, { cache: 'no-cache' }).then((res) => {
+          if (!res.ok) throw new Error('precache failed: ' + u);
+          return c.put(u, res);
+        })
+      ))
+    )
+    .then(() => caches.open(CACHE).then((c) =>
+      Promise.allSettled(OPTIONAL.map((u) =>
+        fetch(u, { cache: 'no-cache' }).then((res) => { if (res.ok) return c.put(u, res); })
+      ))))
+    .then(() => self.skipWaiting())
   );
 });
 
@@ -42,7 +55,7 @@ self.addEventListener('fetch', (e) => {
 
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req, { cache: 'no-cache' })          // revalidate (Pages sends max-age=600)
+      fetch(req, { cache: 'no-cache' })
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put('./index.html', copy));
