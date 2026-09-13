@@ -1,4 +1,4 @@
-// v1.2 — menu crash fixed (element closed over properly), duplicate action, weekly progress line
+// v1.8 — menu item closures now bind to the menu element they live in (fixes ReferenceError)
 import { h } from '../utils/dom.js';
 import { getState, deleteHabit, restoreHabit, moveHabit, addHabit } from '../store.js';
 import { habitStats, weekProgress } from '../stats.js';
@@ -11,7 +11,12 @@ import { toast } from '../components/toast.js';
 
 let hinted = false;
 
+function closeAllMenus() {
+  document.querySelectorAll('.menu:not([hidden])').forEach((m) => { m.hidden = true; });
+}
+
 function menuFor(habit, index, total) {
+  const menu = h('div', { class: 'menu', hidden: true, role: 'menu' });   // element FIRST…
   const items = [];
   if (index > 0) items.push(['move up', () => moveHabit(habit.id, -1), '']);
   if (index < total - 1) items.push(['move down', () => moveHabit(habit.id, +1), '']);
@@ -27,18 +32,28 @@ function menuFor(habit, index, total) {
     const snap = deleteHabit(habit.id);
     toast(`deleted "${habit.name}"`, { ms: 6000, actionLabel: 'undo', onAction: () => restoreHabit(snap) });
   }, 'danger']);
-  return h('div', { class: 'menu', hidden: true },
-    ...items.map(([label, fn, cls]) =>
-      h('button', { type: 'button', class: cls, onclick: () => { menu.hidden = true; fn(); } }, label)));
+  for (const [label, fn, cls] of items) {
+    menu.append(h('button', {
+      type: 'button', role: 'menuitem', class: cls,
+      onclick: () => { closeAllMenus(); fn(); }        // …closures reference a real binding
+    }, label));
+  }
+  return menu;
 }
 
 function habitCard(habit, index, total) {
   const st = habitStats(getState(), habit);
   const wp = weekProgress(getState(), habit);
-  const menu = menuFor(habit, index, total);                       // fix #1: single element, closed over
+  const menu = menuFor(habit, index, total);
   const toggle = h('button', {
-    type: 'button', class: 'icon-btn', 'aria-label': `menu for ${habit.name}`, 'aria-haspopup': 'menu',
-    onclick: () => { menu.hidden = !menu.hidden; }
+    type: 'button', class: 'icon-btn', 'aria-label': `menu for ${habit.name}`,
+    'aria-haspopup': 'menu', 'aria-expanded': 'false',
+    onclick: () => {
+      const willOpen = menu.hidden;
+      closeAllMenus();
+      menu.hidden = !willOpen;
+      toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    }
   }, h('span', { html: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>' }));
 
   return h('section', { class: 'habit-card' },
