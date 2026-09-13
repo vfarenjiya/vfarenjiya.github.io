@@ -8,17 +8,16 @@
   <meta name="theme-color" content="#151716" />
   <meta name="color-scheme" content="dark light" />
   <script>
-    /* Pre-paint theme: runs before CSS loads so there is no white/black flash.
-       Key must stay in sync with js/features/theme.js */
+    /* Pre-paint theme (key must stay in sync with js/features/theme.js) */
     (function () {
       var t = 'black';
       try { if (localStorage.getItem('habits-pwa:theme') === 'white') t = 'white'; } catch (e) {}
       document.documentElement.setAttribute('data-theme', t);
     })();
   </script>
-  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="manifest" href="./manifest.json" />
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="./icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="stylesheet" href="./css/base.css" />
