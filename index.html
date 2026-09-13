@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Habits</title>
+  <meta name="description" content="Offline-first habit tracker" />
+  <meta name="theme-color" content="#151716" />
+  <meta name="color-scheme" content="dark light" />
+  <script>
+    /* Pre-paint theme: runs before CSS loads so there is no white/black flash.
+       Key must stay in sync with js/features/theme.js */
+    (function () {
+      var t = 'black';
+      try { if (localStorage.getItem('habits-pwa:theme') === 'white') t = 'white'; } catch (e) {}
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon.svg" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/components.css" />
+  <link rel="stylesheet" href="./css/views.css" />
+</head>
+<body>
+  <main id="view" aria-live="polite"></main>
+  <nav id="bottom-nav" class="bottom-nav" aria-label="Primary"></nav>
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root"></div>
+  <noscript>This app needs JavaScript.</noscript>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
