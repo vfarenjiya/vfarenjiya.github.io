@@ -1,0 +1,63 @@
+name: deploy-pages
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate PNG icons + inject them into manifest.json (CI-only enrichment)
+        run: |
+          python3 tools/make-icons.py
+          python3 - <<'PY'
+          import json
+          path = 'manifest.json'
+          m = json.load(open(path))
+          png = [
+            {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+          ]
+          m["icons"] = png + [i for i in m.get("icons", []) if i.get("type") == "image/svg+xml"]
+          m["shortcuts"] = [{
+            "name": "New habit", "short_name": "New",
+            "description": "Create a habit to track", "url": "index.html#new=1",
+            "icons": [{"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"}],
+          }]
+          json.dump(m, open(path, 'w'), indent=2)
+          PY
+
+      - name: Assemble _site
+        run: |
+          mkdir -p _site
+          touch .nojekyll
+          cp .nojekyll index.html manifest.json sw.js _site/
+          cp -r css js icons _site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
