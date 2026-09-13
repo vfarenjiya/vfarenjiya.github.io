@@ -1,4 +1,4 @@
-const VERSION = '1.7.2';                 // bump on every release
+const VERSION = '1.8.0';                 // bump on every release
 const CACHE = `habits-${VERSION}`;
 const APP_SHELL = [
   './', './index.html', './manifest.json', './icons/icon.svg',
