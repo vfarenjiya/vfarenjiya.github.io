@@ -98,7 +98,107 @@ function reelCard(c){const el=document.createElement('div');el.className='reel';
 function renderReels(){if(!reelDeck.length){reelDeck=shuffle(pool());reelPos=0}const w=$('reelsWrap');if(!w)return;w.innerHTML='';for(let i=0;i<4;i++){if(reelPos>=reelDeck.length){reelDeck=shuffle(pool());reelPos=0}w.appendChild(reelCard(reelDeck[reelPos++]))}w.onscroll=()=>{if(w.scrollTop+w.clientHeight>w.scrollHeight-600){for(let i=0;i<3;i++){if(reelPos>=reelDeck.length){reelDeck=shuffle(pool());reelPos=0}w.appendChild(reelCard(reelDeck[reelPos++]))}}}}
 let pTab='grid';
 function statsCardHTML(){const c=state.acc.c||0,w=state.acc.w||0,tot=c+w;return '<div class="acard" style="max-width:935px;margin:12px auto 0"><h3>📊 Lifetime stats</h3><div class="statgrid"><div><b>'+(tot?Math.round(c/tot*100)+'%':'—')+'</b><span>accuracy</span></div><div><b>'+((state.mix&&state.mix.best)||0)+'/10</b><span>mix best</span></div><div><b>'+Object.keys(srs()).length+'</b><span>scheduled</span></div><div><b>'+state.stats.bosses+'</b><span>bosses</span></div><div><b>'+knownFormulas()+'</b><span>formulas</span></div><div><b>'+state.bestStreak+'</b><span>best streak</span></div></div></div>'}
-function renderProfile(){updateChrome();const sw=$('statWrap');if(sw)sw.innerHTML=statsCardHTML();const hl=$('highlights');if(hl)hl.innerHTML=ACH.map(a=>'<div class="hl'+(state.ach.includes(a.id)?' on':'')+'"><div class="hlc">'+a.i+'</div><b>'+a.n+'</b></div>').join('');const g=$('profileGrid');if(!g)return;if(pTab==='grid')g.innerHTML=TOPICS.map(tileHTML).join('');else if(pTab==='saved'){const P=pool();g.innerHTML=state.review.length?state.review.map(id=>{const t=TOPICS.find(x=>x.id===id);if(t)return tileHTML(t);const c=P.find(x=>x.id===id);if(!c)return '';return '<div class="tile" data-cid="'+c.id+'"><span class="badge">'+(EMO[c.s]||'📌')+'</span><div class="tt">'+(c.title||c.q||'').slice(0,60)+'</div><div class="tk">'+(c.type==='formula'?parseMathText('$'+c.tex+'$'):(c.q||'').slice(0,80))+'</div></div>'}).join(''):'<div class="hint" style="padding:20px">review pile empty</div>'}else g.innerHTML=ACH.map(a=>'<div class="tile'+(state.ach.includes(a.id)?' known':'')+'"><div class="tk" style="font-size:26px">'+a.i+'</div><span class="badge">'+(state.ach.includes(a.id)?'✅':'🔒')+'</span></div>').join('');g.onclick=e=>{const tl=e.target.closest('.tile');if(!tl)return;if(tl.dataset.tid)openTopicSheet(tl.dataset.tid);else if(tl.dataset.cid){const c=pool().find(x=>x.id===tl.dataset.cid);if(c)openCardSheet(c)}};document.querySelectorAll('.ptab').forEach(b=>{b.onclick=()=>{pTab=b.dataset.p;document.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('on',x===b));renderProfile()}})}
+function renderProfile(){
+  updateChrome();
+  
+  // 1. Render Stats Card
+  const sw=$('statWrap');
+  if(sw) sw.innerHTML=statsCardHTML();
+  
+  // 2. Render Highlights Row (Top circles)
+  const hlContainer = $('highlights');
+  if(hlContainer) {
+    hlContainer.innerHTML = ACH.map(a => 
+      '<div class="hl' + (state.ach.includes(a.id) ? ' on' : '') + '">' +
+      '<div class="hlc">' + a.i + '</div>' +
+      '<b>' + a.n + '</b>' +
+      '</div>'
+    ).join('');
+  }
+
+  const g = $('profileGrid');
+  if(!g) return;
+
+  // 3. Render Grid based on Tab
+  if(pTab === 'grid') {
+    // TOPICS TAB: Show all syllabus topics
+    g.innerHTML = TOPICS.map(tileHTML).join('');
+    
+  } else if(pTab === 'saved') {
+    // SAVED TAB: Show review pile (Topics + Cards)
+    const P = pool(); // Get all cards to resolve IDs
+    g.innerHTML = state.review.length 
+      ? state.review.map(id => {
+          // Check if it's a Topic
+          const t = TOPICS.find(x => x.id === id);
+          if(t) return tileHTML(t);
+          
+          // Check if it's a Card (Formula/Flash/Quiz/NAT)
+          const c = P.find(x => x.id === id);
+          if(!c) return '';
+          
+          // Render generic card tile for saved items
+          return '<div class="tile ach on" data-cid="' + c.id + '" style="border-color:var(--blue)">' +
+                 '<span class="badge">🔖</span>' +
+                 '<div class="ach-ico">' + (EMO[c.s] || '📌') + '</div>' +
+                 '<div class="tt">' + (c.title || c.q || '').slice(0, 40) + '</div>' +
+                 '<div class="ach-req">' + c.type.toUpperCase() + '</div>' +
+                 '</div>';
+        }).join('') 
+      : '<div class="hint" style="padding:24px;text-align:center">No saved items yet — tap 🔖 on cards to save them here.</div>';
+
+  } else {
+    // BADGES TAB (OPTION B): Show ONLY unlocked badges
+    const earned = ACH.filter(a => state.ach.includes(a.id));
+    
+    if(earned.length) {
+      g.innerHTML = earned.map(a => 
+        '<div class="tile ach on" data-ach="' + a.id + '">' +
+        '<span class="badge">✅</span>' +
+        '<div class="ach-ico">' + a.i + '</div>' +
+        '<div class="tt">' + a.n + '</div>' +
+        '<div class="ach-req">' + a.d + '</div>' +
+        '</div>'
+      ).join('');
+    } else {
+      // Empty state for fresh users
+      g.innerHTML = '<div class="hint" style="padding:24px;text-align:center;grid-column:1/-1">' +
+                    'No badges yet — punch topics & ace cards to earn your first! ✨' +
+                    '</div>';
+    }
+  }
+
+  // 4. Handle Clicks
+  g.onclick = e => {
+    const tl = e.target.closest('.tile');
+    if(!tl) return;
+    
+    // Click Topic
+    if(tl.dataset.tid) {
+      openTopicSheet(tl.dataset.tid);
+    }
+    // Click Saved Card
+    else if(tl.dataset.cid) {
+      const c = pool().find(x => x.id === tl.dataset.cid);
+      if(c) openCardSheet(c);
+    }
+    // Click Badge
+    else if(tl.dataset.ach) {
+      const a = ACH.find(x => x.id === tl.dataset.ach);
+      if(a) toast(a.n + ' — ' + a.d, a.i);
+    }
+  };
+
+  // 5. Handle Tab Switching
+  document.querySelectorAll('.ptab').forEach(b => {
+    b.onclick = () => {
+      pTab = b.dataset.p;
+      document.querySelectorAll('.ptab').forEach(x => x.classList.toggle('on', x === b));
+      renderProfile();
+    };
+  });
+}
+
 function exportSheet(){let md='# GATE DA 2027 — Personal Formula Sheet\n\n_generated by GATE Quest · '+todayISO()+'\n\n';SUBJ.forEach(s=>{md+='## '+SUBJECT_META[s].name+'\n\n';FORMULAS_SRC.forEach((f,i)=>{if(f.s===s)md+='- '+f.t+': `$'+f.f+'$` '+(state.formulas[i]?' ✅':'')+'\n'});md+='\n'});const b=new Blob([md],{type:'text/markdown'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='gate-da-formula-sheet.md';a.click();URL.revokeObjectURL(a.href);toast('Formula sheet downloaded','📄')}
 function toggleTheme(){state.isLight=!state.isLight;document.body.classList.toggle('light',state.isLight);saveState();updateChrome()}
 const themeBtn=$('themeBtn');if(themeBtn)themeBtn.onclick=toggleTheme;
