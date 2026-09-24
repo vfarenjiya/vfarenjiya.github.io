@@ -98,6 +98,7 @@ function reelCard(c){const el=document.createElement('div');el.className='reel';
 function renderReels(){if(!reelDeck.length){reelDeck=shuffle(pool());reelPos=0}const w=$('reelsWrap');if(!w)return;w.innerHTML='';for(let i=0;i<4;i++){if(reelPos>=reelDeck.length){reelDeck=shuffle(pool());reelPos=0}w.appendChild(reelCard(reelDeck[reelPos++]))}w.onscroll=()=>{if(w.scrollTop+w.clientHeight>w.scrollHeight-600){for(let i=0;i<3;i++){if(reelPos>=reelDeck.length){reelDeck=shuffle(pool());reelPos=0}w.appendChild(reelCard(reelDeck[reelPos++]))}}}}
 let pTab='grid';
 function statsCardHTML(){const c=state.acc.c||0,w=state.acc.w||0,tot=c+w;return '<div class="acard" style="max-width:935px;margin:12px auto 0"><h3>📊 Lifetime stats</h3><div class="statgrid"><div><b>'+(tot?Math.round(c/tot*100)+'%':'—')+'</b><span>accuracy</span></div><div><b>'+((state.mix&&state.mix.best)||0)+'/10</b><span>mix best</span></div><div><b>'+Object.keys(srs()).length+'</b><span>scheduled</span></div><div><b>'+state.stats.bosses+'</b><span>bosses</span></div><div><b>'+knownFormulas()+'</b><span>formulas</span></div><div><b>'+state.bestStreak+'</b><span>best streak</span></div></div></div>'}
+
 function renderProfile(){
   updateChrome();
   
@@ -105,15 +106,22 @@ function renderProfile(){
   const sw=$('statWrap');
   if(sw) sw.innerHTML=statsCardHTML();
   
-  // 2. Render Highlights Row (Top circles)
+  // 2. Render Highlights Row (Top circles) - OPTION B: HIDE LOCKED
   const hlContainer = $('highlights');
   if(hlContainer) {
-    hlContainer.innerHTML = ACH.map(a => 
-      '<div class="hl' + (state.ach.includes(a.id) ? ' on' : '') + '">' +
-      '<div class="hlc">' + a.i + '</div>' +
-      '<b>' + a.n + '</b>' +
-      '</div>'
-    ).join('');
+    const earnedHighlights = ACH.filter(a => state.ach.includes(a.id));
+    
+    if(earnedHighlights.length) {
+      hlContainer.innerHTML = earnedHighlights.map(a => 
+        '<div class="hl on">' +
+        '<div class="hlc">' + a.i + '</div>' +
+        '<b>' + a.n + '</b>' +
+        '</div>'
+      ).join('');
+    } else {
+      // Hide completely or show hint if empty
+      hlContainer.innerHTML = '<div class="hint" style="padding:10px;width:100%;text-align:center">Earn badges to see them here</div>';
+    }
   }
 
   const g = $('profileGrid');
